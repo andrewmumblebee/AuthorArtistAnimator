@@ -17,8 +17,9 @@ if __name__=="__main__":
     FLAGS = flags.FLAGS
 
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.6
+    config.gpu_options.per_process_gpu_memory_fraction = 0.5
     with tf.Session(config=config) as sess:
         batch = BatchGenerator(FLAGS.dataset_folder)
-        gan = CGAN(sess=sess, isTraining=True, imageSize=[FLAGS.image_height, FLAGS.image_width], labelSize=7, args=FLAGS)
+        label_size = batch.get_label_size()
+        gan = CGAN(sess=sess, isTraining=True, imageSize=[FLAGS.image_height, FLAGS.image_width], labelSize=label_size, args=FLAGS)
         gan.train(f_batch=batch.getBatch)
