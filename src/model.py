@@ -7,8 +7,6 @@ import scipy
 from utility import BatchGenerator
 from operations import *
 
-CHANNELS = 4
-
 # WHAT DO WE NEED?
 # GENERATOR
 # DISCRIMINATOR
@@ -21,6 +19,7 @@ class CGAN:
         self.imageSize = imageSize
         self.save_folder = args.save_folder
         self.reload = args.reload
+        self.cdim = args.cdim
         self.labelSize = labelSize
         self.sess = sess
         self.buildModel()
@@ -52,63 +51,112 @@ class CGAN:
         dim_2_h, dim_2_w = self.calcImageSize(dim_1_h, dim_1_w, stride=2)
         dim_3_h, dim_3_w = self.calcImageSize(dim_2_h, dim_2_w, stride=2)
         dim_4_h, dim_4_w = self.calcImageSize(dim_3_h, dim_3_w, stride=2)
-        # dim_5_h, dim_5_w = self.calcImageSize(dim_4_h, dim_4_w, stride=2)
+        dim_5_h, dim_5_w = self.calcImageSize(dim_4_h, dim_4_w, stride=2)
 
         with tf.variable_scope("Generator") as scope:
             if reuse: scope.reuse_variables()
 
-            yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize])
-            # l = tf.one_hot(label, self.labelSize, name="label_onehot")
-            z = tf.concat([z, y], axis=1, name="concat_z")
+            cgan = False
+            if cgan:
+                yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize]) # I.e. reshapes to [64, 1, 1, 74]
+                # l = tf.one_hot(label, self.labelSize, name="label_onehot")
+                z = tf.concat([z, y], axis=1, name="concat_z")
 
-            self.g_fc1_w, self.g_fc1_b = self._fc_variable([100 + self.labelSize, gf_dim * 8 * dim_4_h * dim_4_w], name="fc1")
-            h = tf.matmul(z, self.g_fc1_w) + self.g_fc1_b
-            h = tf.nn.relu(h)
+                # Two Fully Connected Layers
+                h0 = fc(z, gf_dim, 'g_h0_lin')
+                # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm1")
+                h0 = tf.nn.relu(h0)
+                h0 = tf.concat([h0, y], axis=1, name="concat_a")
 
-            # h0 = linear(z, 256 * dim_3_h * dim_3_w, 'g_h0_lin')
-            # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm4")
-            # h0 = tf.nn.relu(h0)
-            # h0 = tf.reshape(h0, (self.batch_size, dim_3_h, dim_3_w, 256))
+                h0 = fc(z, gf_dim * 16 * dim_5_h * dim_5_w, 'g_h1_line')
+                # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm7")
+                h0 = tf.nn.relu(h0)
+                h0 = tf.reshape(h0, [-1, dim_5_h, dim_5_w, gf_dim * 16])
 
-            # h0 = linear(z, gf_dim * 8 * dim_4_h * dim_4_w, 'g_h1_line')
-            # h0 = tf.reshape(h0, [-1, dim_4_h, dim_4_w, gf_dim * 8])
-            # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm6")
-            # h0 = tf.nn.relu(h0)
-            # #h0 = tf.concat([h0, y], axis=1, name="concat_a")
-            # h0 = conv_cond_concat(h0, yb)
+                h0 = conv_cond_concat(h0, yb)
 
-            h0 = tf.reshape(h, (self.batch_size, dim_4_h, dim_4_w, gf_dim * 8))
 
-            # h0 = deconv2d(h0, output_shape=[self.batch_size, dim_4_h, dim_4_w, 512], name="deconv5")
-            # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm5")
-           #  h0 = conv_cond_concat(h0, yb)
+                # h0 = tf.reshape(h0, (self.batch_size, dim_3_h, dim_3_w, 256))
 
-            # Deconv 1 -> 256x256
-            h0 = deconv2d(h0, output_shape=[self.batch_size, dim_3_h, dim_3_w, gf_dim * 4], name="deconv4")
-            h0 = batch_norm(h0, is_training=isTraining, scope="gNorm4")
-            # h0 = tf.nn.dropout(h0, 0.5)
-            h0 = tf.nn.relu(h0)
-            h0 = conv_cond_concat(h0, yb)
+                # h0 = linear(z, gf_dim * 8 * dim_4_h * dim_4_w, 'g_h1_line')
+                # h0 = tf.reshape(h0, [-1, dim_4_h, dim_4_w, gf_dim * 8])
+                # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm6")
+                # h0 = tf.nn.relu(h0)
+                # #h0 = tf.concat([h0, y], axis=1, name="concat_a")
+                # h0 = conv_cond_concat(h0, yb)
 
-            # Deconv 1 -> 128x128
-            h1 = deconv2d(h0, output_shape=[self.batch_size, dim_2_h, dim_2_w, gf_dim * 2], name="deconv3")
-            h1 = batch_norm(h1, is_training=isTraining, scope="gNorm3")
-            # h1 = tf.nn.dropout(h1, 0.5)
-            h1 = tf.nn.relu(h1)
-            h1 = conv_cond_concat(h1, yb)
+                # h0 = tf.reshape(h, (self.batch_size, dim_5_h, dim_5_w, gf_dim * 16))
 
-            # Deconv 2 -> 64x64
-            h2 = deconv2d(h1, output_shape = [self.batch_size, dim_1_h, dim_1_w, gf_dim * 1], name="deconv2")
-            h2 = batch_norm(h2, is_training=isTraining, scope="gNorm2")
-            # h2 = tf.nn.dropout(h2, 0.5)
-            h2 = tf.nn.relu(h2)
-            h2 = conv_cond_concat(h2, yb)
+                # h0 = linear(z, gf_dim * 8 * dim_4_h * dim_4_w, 'g_h1_line')
+                # h0 = tf.reshape(h0, [-1, dim_4_h, dim_4_w, gf_dim * 8])
+                h0 = deconv2d(h0, output_shape=[self.batch_size, dim_4_h, dim_4_w, gf_dim * 8], name="deconv5")
+                h0 = batch_norm(h0, is_training=isTraining, scope="gNorm6")
+                h0 = tf.nn.relu(h0)
+                #h0 = tf.concat([h0, y], axis=1, name="concat_a")
+                h0 = conv_cond_concat(h0, yb)
 
-            # Deconv 3 -> 64x64 Image
-            h3 = deconv2d(h2, output_shape=[self.batch_size, dim_0_h, dim_0_w, CHANNELS], name= "deconv1")
+                # h0 = deconv2d(h0, output_shape=[self.batch_size, dim_4_h, dim_4_w, 512], name="deconv5")
+                # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm5")
+                #  h0 = conv_cond_concat(h0, yb)
 
-            # Using tanh as per improved DCGAN paper.
-            y = tf.nn.sigmoid(h3, name="sprite")
+                # Deconv 1 -> 256x256
+                h0 = deconv2d(h0, output_shape=[self.batch_size, dim_3_h, dim_3_w, gf_dim * 4], name="deconv4")
+                h0 = batch_norm(h0, is_training=isTraining, scope="gNorm4")
+                # h0 = tf.nn.dropout(h0, 0.5)
+                h0 = tf.nn.relu(h0)
+                h0 = conv_cond_concat(h0, yb)
+
+                # Deconv 1 -> 128x128
+                h1 = deconv2d(h0, output_shape=[self.batch_size, dim_2_h, dim_2_w, gf_dim * 2], name="deconv3")
+                h1 = batch_norm(h1, is_training=isTraining, scope="gNorm3")
+                #h1 = tf.nn.dropout(h1, 0.5)
+                h1 = tf.nn.relu(h1)
+                h1 = conv_cond_concat(h1, yb)
+
+                # Deconv 2 -> 64x64
+                h2 = deconv2d(h1, output_shape = [self.batch_size, dim_1_h, dim_1_w, gf_dim * 1], name="deconv2", filt=[8, 8])
+                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm2")
+                #h2 = tf.nn.dropout(h2, 0.5)
+                h2 = tf.nn.relu(h2)
+                h2 = conv_cond_concat(h2, yb)
+
+                # Deconv 3 -> 64x64 Image
+                h3 = deconv2d(h2, output_shape=[self.batch_size, dim_0_h, dim_0_w, self.cdim], name= "deconv1")
+
+                # Using tanh as per improved DCGAN paper.
+                y = tf.nn.tanh(h3, name="sprite")
+            else:
+                s_h, s_w = self.imageSize[0], self.imageSize[1]
+                s_h2, s_h4, s_h8 = int(s_h/2), int(s_h/4), int(s_h/8)
+                s_w2, s_w4, s_w8 = int(s_w/2), int(s_w/4), int(s_w/8)
+
+                # yb = tf.expand_dims(tf.expand_dims(y, 1),2)
+                yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize])
+                z = tf.concat([z, y], axis=1, name="concat_z")
+
+                h0 = fc(z, 1024, 'g_h0_lin')
+                h0 = batch_norm(h0, is_training=isTraining, scope="gNorm1")
+                h0 = tf.nn.relu(h0)
+                h0 = tf.concat([h0, y], axis=1, name="concat_h1")
+
+                h1 = fc(h0, 64 * 2 * s_h8 * s_w8, 'g_h1_lin')
+                h1 = batch_norm(h1, is_training=isTraining, scope="gNorm2")
+                h1 = tf.nn.relu(h1)
+                h1 = tf.reshape(h1, [self.batch_size, s_h8, s_w8, 64 * 2])
+                h1 = conv_cond_concat(h1, yb)
+
+                h2 = deconv2d(h1,[self.batch_size, s_h4, s_w4, 64 * 2], name='g_h4')
+                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm4")
+                h2 = tf.nn.relu(h2)
+                h2 = conv_cond_concat(h2, yb)
+
+                h2 = deconv2d(h2,[self.batch_size, s_h2, s_w2, 64 * 2], name='g_h2')
+                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm3")
+                h2 = tf.nn.relu(h2)
+                h2 = conv_cond_concat(h2, yb)
+
+                return tf.nn.tanh(
+                    deconv2d(h2, [self.batch_size, s_h, s_w, self.cdim], name='g_h3'))
 
         return y
 
@@ -117,60 +165,72 @@ class CGAN:
             if reuse: scope.reuse_variables()
             df_dim = 64
 
+            cgan_layer = True
+            if cgan_layer:
+                # This is based on the CGAN architecture
 
-            # conditional layer
-            yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize])
-            z = conv_cond_concat(z, yb)
+                # conditional layer
+                yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize])
+                z = conv_cond_concat(z, yb)
 
-            # conv1 CHANNELS + self.labelSize
-            h0 = conv2d(z, output_dim = 4 + self.labelSize, name="conv1")
-            h0 = batch_norm(h0, is_training=self.isTraining, scope="dNorm1")
-            h0 = lrelu(h0)
-            h0 = conv_cond_concat(h0, yb)
+                # conv1 CHANNELS + self.labelSize
+                h0 = conv2d(z, output_dim = df_dim, name="conv1")
+                h0 = batch_norm(h0, is_training=self.isTraining, scope="dNorm1")
+                h0 = lrelu(h0)
+                h0 = conv_cond_concat(h0, yb)
 
-            # conv2
-            # h1 = conv2d(h0, output_dim = df_dim * 2 + self.labelSize, name="conv2")
-            h1 = conv2d(h0, output_dim = df_dim * 2, name="conv2")
-            h1 = batch_norm(h1, is_training=self.isTraining, scope="dNorm2")
-            h1 = lrelu(h1)
-            #n_b, n_h, n_w, n_f = [int(x) for x in h1.get_shape()]
-            #h1 = tf.reshape(h1, [self.batch_size, n_h * n_w * n_f])
-            #h1 = tf.reshape(h1, [self.batch_size, -1])
-            #h1 = tf.concat([h1, y], 1)
-            h1 = conv_cond_concat(h1, yb)
+                # conv2
+                # h1 = conv2d(h0, output_dim = df_dim * 2 + self.labelSize, name="conv2")
+                h1 = conv2d(h0, output_dim = df_dim * 2, name="conv2")
+                h1 = batch_norm(h1, is_training=self.isTraining, scope="dNorm2")
+                h1 = lrelu(h1)
+                h1 = conv_cond_concat(h1, yb)
 
-            # conv3
-            h2 = conv2d(h1, output_dim= df_dim * 4, name="conv3")
-            # h2 = linear(h1, 128 + self.labelSize, 'd_h2_lin')
-            h2 = batch_norm(h2, is_training=self.isTraining, scope="dNorm3")
-            h2 = lrelu(h2)
-            #h2 = tf.concat([h1, y], 1)
-            h2 = conv_cond_concat(h2, yb)
+                # conv3
+                h2 = conv2d(h1, output_dim= df_dim * 4, name="conv3")
+                # h2 = linear(h1, 128 + self.labelSize, 'd_h2_lin')
+                h2 = batch_norm(h2, is_training=self.isTraining, scope="dNorm3")
+                h2 = lrelu(h2)
+                #h2 = tf.concat([h1, y], 1)
+                h2 = conv_cond_concat(h2, yb)
 
-            # # conv4
-            h3 = conv2d(h2, output_dim=df_dim * 8, name="conv4")
-            h3 = batch_norm(h3, is_training=self.isTraining, scope="dNorm4")
-            h3 = lrelu(h3)
-            h3 = conv_cond_concat(h3, yb)
+                # # conv4
+                h3 = conv2d(h2, output_dim=df_dim * 8, name="conv4")
+                h3 = batch_norm(h3, is_training=self.isTraining, scope="dNorm4")
+                h3 = lrelu(h3)
+                h3 = conv_cond_concat(h3, yb)
 
-            # # conv5
-            # h4 = conv2d(h3, output_dim=[5, 5, 512 + self.labelSize, 1024], name="conv5")
-            # h4 = batch_norm(h4, is_training=self.isTraining, scope="dNorm5")
-            # h4 = lrelu(h4)
-            # h4 = conv_cond_concat(h4, yb)
+                # h4 = tf.reshape(h3, [self.batch_size, -1])
+                # h4 = fc(h4, 1, scope='d_h3_lin')
+                # h4 = tf.nn.sigmoid(h4)
 
-            # h3 = linear(tf.reshape(h2, [self.batch_size, -1]), 1, 'd_h4_lin')
-            # h4 = tf.reshape(h3, [self.batch_size, -1])
-            # h4 = linear(h4, 1, 'd_h3_lin')
+                # fc1
+                n_b, n_h, n_w, n_f = [int(x) for x in h3.get_shape()]
+                h4 = tf.reshape(h3, [n_b, n_h * n_w * n_f])
+                h4 = fc(h4, n_h * n_w * n_f, scope='d_fc1')
+            else:
+                # This is based on the DCGAN tensorflow Architecture
+                yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize])
+                x = conv_cond_concat(z, yb)
 
+                h0 = conv2d(x, self.cdim + self.labelSize, name='d_h0_conv', filt=[8, 8])
+                h0 = lrelu(h0)
+                h0 = conv_cond_concat(h0, yb)
 
-            # fc1
-            n_b, n_h, n_w, n_f = [int(x) for x in h3.get_shape()]
-            h4 = tf.reshape(h3,[self.batch_size, n_h * n_w * n_f])
-            self.d_fc1_w, self.d_fc1_b = self._fc_variable([n_h * n_w * n_f, 1],name="fc1")
-            h4 = tf.matmul(h4, self.d_fc1_w) + self.d_fc1_b
+                h1 = conv2d(h0, df_dim + self.labelSize, name='d_h1_conv')
+                h1 = batch_norm(h1, is_training=self.isTraining, scope="dNorm1")
+                h1 = lrelu(h1)
+                h1 = tf.reshape(h1, [self.batch_size, -1])
+                h1 = tf.concat([h1, y], axis=1, name="concat_h1")
 
-            # h4 = tf.nn.sigmoid(h4)
+                h2 = fc(h1, 1024, 'd_h2_lin')
+                h2 = lrelu(h2)
+                h2 = batch_norm(h1, is_training=self.isTraining, scope="dNorm2")
+                h2 = tf.concat([h2, y], axis=1, name="concat_h2")
+
+                h3 = fc(h2, 1, 'd_h3_lin')
+
+                h4 = tf.nn.sigmoid(h3)
 
         return h4
 
@@ -179,7 +239,7 @@ class CGAN:
         self.z = tf.placeholder(tf.float32, [self.batch_size, self.zdim], name="z")
         self.l = tf.placeholder(tf.float32, [self.batch_size, self.labelSize], name="label")
 
-        img_dimensions = [self.imageSize[0], self.imageSize[1], CHANNELS]
+        img_dimensions = [self.imageSize[0], self.imageSize[1], self.cdim]
         self.g_real = tf.placeholder(tf.float32, [self.batch_size] + img_dimensions, name="images")
 
 
@@ -207,6 +267,11 @@ class CGAN:
 
         print("DEFINED OPTIMIZERS")
 
+        tf.summary.scalar("d_loss_real"   ,self.d_loss_real)
+        tf.summary.scalar("d_loss_fake"   ,self.d_loss_fake)
+        tf.summary.scalar("d_loss"      ,self.d_loss)
+        tf.summary.scalar("g_loss"      ,self.g_loss)
+
         #############################
         ### saver
         self.saver = tf.train.Saver()
@@ -226,7 +291,7 @@ class CGAN:
                     i = idx // d
                     j = idx-i*d
                     img[j * h:j * h + h, i * w:i * w + w, :] = image
-                return img * 255. #  + 1) * 2)
+                return ((img * 255.) + 1) * 2
             else:
                 raise ValueError('in merge(images,size) images parameter '
                                 'must have dimensions: HxW or HxWx3 or HxWx4')
@@ -240,22 +305,40 @@ class CGAN:
 
         step = -1
         start = time.time()
+
+        # Pretrains discriminator net against some real examples.
+        # pre_train = 0
+        # while pre_train <= 2:
+        #     batch_z = np.random.uniform(-1., +1., [self.batch_size, self.zdim])
+        #     batch_images, batch_labels = f_batch(self.batch_size)
+        #     feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images}
+        #     _, d_loss, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_real, self.summary], feed_dict = feed_dict)
+        #     pre_train += 1
+
         while True:
             step += 1
 
+            batch_z = np.random.uniform(-1., +1., [self.batch_size, self.zdim])
             batch_images, batch_labels = f_batch(self.batch_size)
-            # Random noise vector
-            batch_z                   = np.random.uniform(-1., +1., [self.batch_size, self.zdim])
-            # Update generator
-            _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
-            _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
-            feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images}
-            _, d_loss, g_fake, g_real = self.sess.run([self.d_optimizer, self.d_loss, self.g_fake, self.g_real], feed_dict = feed_dict)
+
+            if step % 5 == 1:
+                feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images}
+                _, d_loss, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_real, self.summary], feed_dict = feed_dict)
+            else:
+                # Update generator
+                #_, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
+                _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
+                _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
+                feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images}
+                _, d_loss, g_fake, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_fake, self.g_real, self.summary], feed_dict = feed_dict)
+
+            if step % 10 == 0:
+                print ("{}: loss(D)={:.4f}, loss(G)={:.4f}; time/step = {:.2f} sec".format(step, d_loss, g_loss, time.time() - start))
+                start = time.time()
 
             if step % 100 == 0:
                 # Run models outputting images as training is run.
-                print ("{}: loss(D)={:.4f}, loss(G)={:.4f}; time/step = {:.2f} sec".format(step, d_loss, g_loss, time.time() - start))
-                start = time.time()
+                self.writer.add_summary(summary, step)
 
                 l0 = np.random.uniform(-1, +1, [self.batch_size, self.labelSize])
                 #l1 = np.random.uniform(-1, +1, [self.batch_size, self.labelSize])
@@ -269,9 +352,11 @@ class CGAN:
                 z2 = np.repeat(z2, repeats=self.batch_size, axis=0)
 
                 g_image1 = self.sess.run(self.g_sample, feed_dict={self.z:z1, self.l:l0})
-                g_image2 = self.sess.run(self.g_sample, feed_dict={self.z:z2, self.l:l1})
+                g_image2 = self.sess.run(self.g_sample, feed_dict={self.z:batch_z, self.l:batch_labels})
                 scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}d_real.png".format(step)), tileImage(g_real, [64, 64]))
                 scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}d_fake1.png".format(step)), tileImage(g_image1, [64, 64]))
                 scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}d_fake2.png".format(step)), tileImage(g_image2, [64, 64]))
                 self.saver.save(self.sess,os.path.join(self.save_folder, "model.ckpt"), step)
-                # freeze_graph('Generator/sprite')
+
+            # if step % 1000 == 0:
+            #     freeze_graph('Generator/sprite')
