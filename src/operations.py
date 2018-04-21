@@ -21,11 +21,14 @@ def deconv2d(input_, output_shape,
         deconv = tf.nn.conv2d_transpose(input_, w, output_shape=output_shape,
                     strides=strides, padding = "SAME", data_format="NHWC")
 
-        biases = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
-        deconv = tf.reshape(tf.nn.bias_add(deconv, biases), deconv.get_shape())
+        b = tf.get_variable('biases', [output_shape[-1]], initializer=tf.constant_initializer(0.0))
+        deconv = tf.reshape(tf.nn.bias_add(deconv, b), deconv.get_shape())
+
+        tf.summary.histogram("{}_w".format(name), w)
+        tf.summary.histogram("{}_b".format(name), b)
 
         if with_w:
-            return deconv, w, biases
+            return deconv, w, b
         else:
             return deconv
 
@@ -42,28 +45,31 @@ def conv2d(input_, output_dim,
        filt=[5, 5], strides=[1, 2, 2, 1], stddev=0.02,
        name="conv2d"):
   with tf.variable_scope(name):
-    w = tf.get_variable('w', [filt[0], filt[1], input_.get_shape()[-1], output_dim],
-              initializer=tf.truncated_normal_initializer(stddev=stddev))
-    print(input_.get_shape()[-1])
+    w = tf.get_variable('w', [filt[0], filt[1], input_.get_shape()[-1], output_dim], #tf.truncated_normal_initializer(stddev=stddev)
+              initializer=tf.contrib.layers.xavier_initializer_conv2d())
     conv = tf.nn.conv2d(input_, w, strides=strides, padding='SAME')
 
-    biases = tf.get_variable('biases', [output_dim], initializer=tf.constant_initializer(0.0))
-    conv = tf.reshape(tf.nn.bias_add(conv, biases), conv.get_shape())
+    b = tf.get_variable('b', [output_dim], initializer=tf.constant_initializer(0.0))
+    conv = tf.reshape(tf.nn.bias_add(conv, b), conv.get_shape())
+
+    tf.summary.histogram("{}_w".format(name), w)
+    tf.summary.histogram("{}_b".format(name), b)
 
     return conv
 
-def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):
+def fc(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False, name='fc'):
+    # Linear Fully connected layer
     shape = input_.get_shape().as_list()
 
-    with tf.variable_scope(scope or "Linear"):
-        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
+    with tf.variable_scope(scope or "FullyConnected"):
+        w = tf.get_variable('w', [shape[1], output_size], tf.float32,
                     tf.random_normal_initializer(stddev=stddev))
-        bias = tf.get_variable("bias", [output_size],
+        b = tf.get_variable('b', [output_size],
         initializer=tf.constant_initializer(bias_start))
         if with_w:
-            return tf.matmul(input_, matrix) + bias, matrix, bias
+            return tf.matmul(input_, w) + b, w, b
         else:
-            return tf.matmul(input_, matrix) + bias
+            return tf.matmul(input_, w) + b
 
 def freeze_graph(output_node_names):
     """Extract the sub graph defined by the output nodes and convert
