@@ -31,22 +31,34 @@ def get_image_data(images, path):
         data.append(np.reshape(im.getdata(), [64, 64, 4]))
     return np.array(data)
 
+def calcImageSize(dh, dw, stride):
+    return int(np.ceil(float(dh)/float(stride))), int(np.ceil(float(dw)/float(stride)))
+
 class BatchGenerator:
+    """ Class for handling retrieval of images from the dataset.
+
+        Randomly samples from the dataset, until an epoch is completed then resets.
+    """
     def __init__(self, dataset_folder):
         """ Retrieve sprite images and label them based on their filename. """
-        self.image, self.label = find_images(dataset_folder)
+        self.path, self.label = find_images(dataset_folder)
+        self.reset_batch()
         self.dataset_folder = dataset_folder
 
     def getBatch(self, batch_size, color=True):
-        idx = np.random.randint(0, len(self.image) - 1, batch_size) # Random index
-        x = get_image_data(self.image[idx], self.dataset_folder) # Image and Respective Label
-        x = (x / 255) # Normalize Channel values to 0-1 smoothing of real labels
-        x = (x * 2) - 1 # Normalize to -1 to 1 range.
+        idx = np.random.randint(0, len(self.batch_buffer) - 1, batch_size) # Random index
+        x = get_image_data(self.batch_buffer[idx], self.dataset_folder) # Image and Respective Label
+        x = (x / 255) # Normalize Channel values to 0-1 range.
+        x = (x * 2) - 1 # Further Normalize to -1 to 1 range.
         t = self.label[idx]
+        self.batch_buffer = np.delete(self.batch_buffer, idx)
         return x, t
 
     def get_label_size(self):
         return self.label.shape[1]
+
+    def reset_batch(self):
+        self.batch_buffer = self.path.clone()
 
 
 def main():
