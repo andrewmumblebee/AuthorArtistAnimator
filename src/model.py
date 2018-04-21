@@ -75,48 +75,26 @@ class CGAN:
 
                 h0 = conv_cond_concat(h0, yb)
 
-
-                # h0 = tf.reshape(h0, (self.batch_size, dim_3_h, dim_3_w, 256))
-
-                # h0 = linear(z, gf_dim * 8 * dim_4_h * dim_4_w, 'g_h1_line')
-                # h0 = tf.reshape(h0, [-1, dim_4_h, dim_4_w, gf_dim * 8])
-                # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm6")
-                # h0 = tf.nn.relu(h0)
-                # #h0 = tf.concat([h0, y], axis=1, name="concat_a")
-                # h0 = conv_cond_concat(h0, yb)
-
-                # h0 = tf.reshape(h, (self.batch_size, dim_5_h, dim_5_w, gf_dim * 16))
-
-                # h0 = linear(z, gf_dim * 8 * dim_4_h * dim_4_w, 'g_h1_line')
-                # h0 = tf.reshape(h0, [-1, dim_4_h, dim_4_w, gf_dim * 8])
                 h0 = deconv2d(h0, output_shape=[self.batch_size, dim_4_h, dim_4_w, gf_dim * 8], name="deconv5")
                 h0 = batch_norm(h0, is_training=isTraining, scope="gNorm6")
                 h0 = tf.nn.relu(h0)
-                #h0 = tf.concat([h0, y], axis=1, name="concat_a")
                 h0 = conv_cond_concat(h0, yb)
 
-                # h0 = deconv2d(h0, output_shape=[self.batch_size, dim_4_h, dim_4_w, 512], name="deconv5")
-                # h0 = batch_norm(h0, is_training=isTraining, scope="gNorm5")
-                #  h0 = conv_cond_concat(h0, yb)
-
-                # Deconv 1 -> 256x256
+                # Deconv 1
                 h0 = deconv2d(h0, output_shape=[self.batch_size, dim_3_h, dim_3_w, gf_dim * 4], name="deconv4")
                 h0 = batch_norm(h0, is_training=isTraining, scope="gNorm4")
-                # h0 = tf.nn.dropout(h0, 0.5)
                 h0 = tf.nn.relu(h0)
                 h0 = conv_cond_concat(h0, yb)
 
-                # Deconv 1 -> 128x128
+                # Deconv 1
                 h1 = deconv2d(h0, output_shape=[self.batch_size, dim_2_h, dim_2_w, gf_dim * 2], name="deconv3")
                 h1 = batch_norm(h1, is_training=isTraining, scope="gNorm3")
-                #h1 = tf.nn.dropout(h1, 0.5)
                 h1 = tf.nn.relu(h1)
                 h1 = conv_cond_concat(h1, yb)
 
-                # Deconv 2 -> 64x64
+                # Deconv 2
                 h2 = deconv2d(h1, output_shape = [self.batch_size, dim_1_h, dim_1_w, gf_dim * 1], name="deconv2", filt=[8, 8])
                 h2 = batch_norm(h2, is_training=isTraining, scope="gNorm2")
-                #h2 = tf.nn.dropout(h2, 0.5)
                 h2 = tf.nn.relu(h2)
                 h2 = conv_cond_concat(h2, yb)
 
@@ -130,7 +108,6 @@ class CGAN:
                 s_h2, s_h4, s_h8 = int(s_h/2), int(s_h/4), int(s_h/8)
                 s_w2, s_w4, s_w8 = int(s_w/2), int(s_w/4), int(s_w/8)
 
-                # yb = tf.expand_dims(tf.expand_dims(y, 1),2)
                 yb = tf.reshape(y, [self.batch_size, 1, 1, self.labelSize])
                 z = tf.concat([z, y], axis=1, name="concat_z")
 
@@ -145,13 +122,13 @@ class CGAN:
                 h1 = tf.reshape(h1, [self.batch_size, s_h8, s_w8, 64 * 2])
                 h1 = conv_cond_concat(h1, yb)
 
-                h2 = deconv2d(h1,[self.batch_size, s_h4, s_w4, 64 * 2], name='g_h4')
-                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm4")
+                h2 = deconv2d(h1,[self.batch_size, s_h4, s_w4, 64 * 2], name='g_h1')
+                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm3")
                 h2 = tf.nn.relu(h2)
                 h2 = conv_cond_concat(h2, yb)
 
                 h2 = deconv2d(h2,[self.batch_size, s_h2, s_w2, 64 * 2], name='g_h2')
-                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm3")
+                h2 = batch_norm(h2, is_training=isTraining, scope="gNorm4")
                 h2 = tf.nn.relu(h2)
                 h2 = conv_cond_concat(h2, yb)
 
@@ -180,7 +157,6 @@ class CGAN:
                 h0 = conv_cond_concat(h0, yb)
 
                 # conv2
-                # h1 = conv2d(h0, output_dim = df_dim * 2 + self.labelSize, name="conv2")
                 h1 = conv2d(h0, output_dim = df_dim * 2, name="conv2")
                 h1 = batch_norm(h1, is_training=self.isTraining, scope="dNorm2")
                 h1 = lrelu(h1)
@@ -188,10 +164,8 @@ class CGAN:
 
                 # conv3
                 h2 = conv2d(h1, output_dim= df_dim * 4, name="conv3")
-                # h2 = linear(h1, 128 + self.labelSize, 'd_h2_lin')
                 h2 = batch_norm(h2, is_training=self.isTraining, scope="dNorm3")
                 h2 = lrelu(h2)
-                #h2 = tf.concat([h1, y], 1)
                 h2 = conv_cond_concat(h2, yb)
 
                 # # conv4
@@ -199,10 +173,6 @@ class CGAN:
                 h3 = batch_norm(h3, is_training=self.isTraining, scope="dNorm4")
                 h3 = lrelu(h3)
                 h3 = conv_cond_concat(h3, yb)
-
-                # h4 = tf.reshape(h3, [self.batch_size, -1])
-                # h4 = fc(h4, 1, scope='d_h3_lin')
-                # h4 = tf.nn.sigmoid(h4)
 
                 # fc1
                 n_b, n_h, n_w, n_f = [int(x) for x in h3.get_shape()]
