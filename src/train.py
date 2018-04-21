@@ -6,7 +6,8 @@ if __name__=="__main__":
     flags = tf.app.flags
     parser = argparse.ArgumentParser()
     flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
-    flags.DEFINE_integer("zdim", 100, "The size of batch images [64]")
+    flags.DEFINE_integer("zdim", 100, "The noise vector size")
+    flags.DEFINE_integer("cdim", 4, "Colour dimensions of image, 4 for alpha layer [4]")
     flags.DEFINE_integer("image_height", 64, "The size of batch images [64]")
     flags.DEFINE_integer("image_width", 64, "The size of batch images [64]")
     flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
@@ -17,7 +18,7 @@ if __name__=="__main__":
     FLAGS = flags.FLAGS
 
     config = tf.ConfigProto()
-    config.gpu_options.per_process_gpu_memory_fraction = 0.5
+    config.gpu_options.per_process_gpu_memory_fraction = 0.7
     with tf.Session(config=config) as sess:
         batch = BatchGenerator(FLAGS.dataset_folder)
         label_size = batch.get_label_size()
