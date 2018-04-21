@@ -1,5 +1,5 @@
 import argparse
-from model import BatchGenerator, CGAN
+from model import BatchGenerator, Artist
 import tensorflow as tf
 
 if __name__=="__main__":
@@ -15,12 +15,18 @@ if __name__=="__main__":
     flags.DEFINE_string("save_folder", "models", "Directory name to save the checkpoints [checkpoint]")
     flags.DEFINE_string("dataset_folder", r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\CharacterScraper\dump\sprites', "folder with images")
     flags.DEFINE_boolean("train", True, "True for training, False for testing [True]")
+    flags.DEFINE_string("model", 'Artist', "Model to train Artist, Author [Artist]")
+    flags.DEFINE_integer("epoch", 25, "Number of epochs to train for [25]")
     FLAGS = flags.FLAGS
 
     config = tf.ConfigProto()
     config.gpu_options.per_process_gpu_memory_fraction = 0.7
-    with tf.Session(config=config) as sess:
-        batch = BatchGenerator(FLAGS.dataset_folder)
-        label_size = batch.get_label_size()
-        gan = CGAN(sess=sess, isTraining=True, imageSize=[FLAGS.image_height, FLAGS.image_width], labelSize=label_size, args=FLAGS)
-        gan.train(f_batch=batch.getBatch)
+
+    if FLAGS.model == "animator":
+        print("TO BE ADDED")
+    else:
+        with tf.Session(config=config) as sess:
+            batch = BatchGenerator(FLAGS.dataset_folder)
+            label_size = batch.get_label_size()
+            artist = Artist(sess=sess, isTraining=True, imageSize=[FLAGS.image_height, FLAGS.image_width], labelSize=label_size, args=FLAGS)
+            artist.train(f_batch=batch.getBatch)
