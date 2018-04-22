@@ -13,10 +13,10 @@ if __name__=="__main__":
     flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
     flags.DEFINE_string("reload", None, "reload")
     flags.DEFINE_string("save_folder", "models", "Directory name to save the checkpoints [checkpoint]")
-    flags.DEFINE_string("dataset_folder", r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\CharacterScraper\dump\sprites', "folder with images")
+    flags.DEFINE_string("dataset_folder", r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\CharacterScraper\dump\large_sheets\sprites', "folder with images")
     flags.DEFINE_boolean("train", True, "True for training, False for testing [True]")
     flags.DEFINE_string("model", 'Artist', "Model to train Artist, Author [Artist]")
-    flags.DEFINE_integer("epoch", 25, "Number of epochs to train for [25]")
+    flags.DEFINE_integer("epoch", 200, "Number of epochs to train for [25]")
     FLAGS = flags.FLAGS
 
     config = tf.ConfigProto()
@@ -29,4 +29,4 @@ if __name__=="__main__":
             batch = BatchGenerator(FLAGS.dataset_folder)
             label_size = batch.get_label_size()
             artist = Artist(sess=sess, isTraining=True, imageSize=[FLAGS.image_height, FLAGS.image_width], labelSize=label_size, args=FLAGS)
-            artist.train(f_batch=batch.getBatch)
+            artist.train(batch_generator=batch)
