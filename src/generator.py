@@ -91,6 +91,6 @@ def artist_generator(z, y, i_dim, gf_dim, c_dim, batch_size, labelSize, reuse=Fa
             h2 = conv_cond_concat(h2, yb)
 
             return tf.nn.tanh(
-                deconv2d(h2, [batch_size, s_h, s_w, c_dim], name='g_h3'))
+                deconv2d(h2, [batch_size, s_h, s_w, c_dim], name='g_h3'), name='sprite')
 
     return y
