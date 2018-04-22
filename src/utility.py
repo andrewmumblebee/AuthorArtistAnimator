@@ -1,6 +1,7 @@
 # ANY UTILITY HELPERS, I.E Reading in files/Generating images.
 import os
 import numpy as np
+import copy
 from sklearn.preprocessing import OneHotEncoder
 from PIL import Image, ImageFilter
 
@@ -34,6 +35,21 @@ def get_image_data(images, path):
 def calcImageSize(dh, dw, stride):
     return int(np.ceil(float(dh)/float(stride))), int(np.ceil(float(dw)/float(stride)))
 
+def tileImage(imgs, size):
+    d = int(np.sqrt(imgs.shape[0]-1))+1
+    h, w = imgs.shape[1], imgs.shape[2]
+    if (imgs.shape[3] in (3,4,1)):
+        colour = imgs.shape[3]
+        img = np.zeros((h * d, w * d, colour))
+        for idx, image in enumerate(imgs):
+            i = idx // d
+            j = idx-i*d
+            img[j * h:j * h + h, i * w:i * w + w, :] = image
+        return ((img * 255.) + 1) * 2
+    else:
+        raise ValueError('in merge(images,size) images parameter '
+                        'must have dimensions: HxW or HxWx3 or HxWx4')
+
 class BatchGenerator:
     """ Class for handling retrieval of images from the dataset.
 
@@ -42,23 +58,27 @@ class BatchGenerator:
     def __init__(self, dataset_folder):
         """ Retrieve sprite images and label them based on their filename. """
         self.path, self.label = find_images(dataset_folder)
-        self.reset_batch()
+        self.reset_buffer()
         self.dataset_folder = dataset_folder
 
-    def getBatch(self, batch_size, color=True):
-        idx = np.random.randint(0, len(self.batch_buffer) - 1, batch_size) # Random index
-        x = get_image_data(self.batch_buffer[idx], self.dataset_folder) # Image and Respective Label
+    def get_batch(self, batch_size, color=True):
+        b_idx = np.random.randint(0, self.buffer.shape[0] - 1, batch_size) # Random index
+        idx = self.buffer[b_idx]
+        x = get_image_data(self.path[idx], self.dataset_folder) # Image and Respective Label
         x = (x / 255) # Normalize Channel values to 0-1 range.
         x = (x * 2) - 1 # Further Normalize to -1 to 1 range.
         t = self.label[idx]
-        self.batch_buffer = np.delete(self.batch_buffer, idx)
+        self.buffer = np.delete(self.buffer, b_idx)
         return x, t
+
+    def get_file_count(self):
+        return self.path.shape[0]
 
     def get_label_size(self):
         return self.label.shape[1]
 
-    def reset_batch(self):
-        self.batch_buffer = self.path.clone()
+    def reset_buffer(self):
+        self.buffer = np.arange(self.path.shape[0])
 
 
 def main():
