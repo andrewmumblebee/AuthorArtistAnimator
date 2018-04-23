@@ -1,7 +1,7 @@
 import tensorflow as tf
 from operations import *
 
-def artist_discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
+def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
     with tf.variable_scope("Discriminator") as scope:
         if reuse: scope.reuse_variables()
 
