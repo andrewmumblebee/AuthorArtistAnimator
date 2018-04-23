@@ -6,8 +6,7 @@ import math, time
 import scipy
 from utility import BatchGenerator, tileImage
 from operations import *
-from generator import artist_generator, animation_generator
-from discriminator import artist_discriminator, animator_discriminator
+from architecture import discriminator, artist_generator, animation_generator
 
 class GAN(object):
     def __init__(self, sess, isTraining, imageSize, labelSize, args):
@@ -44,8 +43,8 @@ class Animator(GAN):
         self.g_sample = animation_generator(self.z, self.l, img_dimensions, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=False)
 
         ### DISCRIMINATORS ###
-        self.d_real = animator_discriminator(self.z, self.l, self.g_real, 64, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
-        self.d_fake = animator_discriminator(self.z, self.l, self.g_fake, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
+        self.d_real = discriminator(self.z, self.l, 64, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
+        self.d_fake = discriminator(self.z, self.l, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
 
         # define loss
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_real, labels=tf.ones_like (self.d_real)))
