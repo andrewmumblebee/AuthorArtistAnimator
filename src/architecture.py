@@ -1,5 +1,6 @@
 import tensorflow as tf
 from operations import *
+from utility import calcImageSize
 
 def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
     with tf.variable_scope("Discriminator") as scope:
@@ -68,19 +69,19 @@ def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTra
     return h4
 
 def artist_generator(z, y, i_dim, gf_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
-    gf_dim = 64
-    dim_0_h, dim_0_w = i_dim[0], i_dim[1] # Building backwards convolutional layers
-    dim_1_h, dim_1_w = calcImageSize(dim_0_h, dim_0_w, stride=2)
-    dim_2_h, dim_2_w = calcImageSize(dim_1_h, dim_1_w, stride=2)
-    dim_3_h, dim_3_w = calcImageSize(dim_2_h, dim_2_w, stride=2)
-    dim_4_h, dim_4_w = calcImageSize(dim_3_h, dim_3_w, stride=2)
-    dim_5_h, dim_5_w = calcImageSize(dim_4_h, dim_4_w, stride=2)
 
     with tf.variable_scope("Generator") as scope:
         if reuse: scope.reuse_variables()
 
         cgan = False
         if cgan:
+            dim_0_h, dim_0_w = i_dim[0], i_dim[1] # Building backwards convolutional layers
+            dim_1_h, dim_1_w = calcImageSize(dim_0_h, dim_0_w, stride=2)
+            dim_2_h, dim_2_w = calcImageSize(dim_1_h, dim_1_w, stride=2)
+            dim_3_h, dim_3_w = calcImageSize(dim_2_h, dim_2_w, stride=2)
+            dim_4_h, dim_4_w = calcImageSize(dim_3_h, dim_3_w, stride=2)
+            dim_5_h, dim_5_w = calcImageSize(dim_4_h, dim_4_w, stride=2)
+
             yb = tf.reshape(y, [batch_size, 1, 1, labelSize]) # I.e. reshapes to [64, 1, 1, 74]
             # l = tf.one_hot(label, self.labelSize, name="label_onehot")
             z = tf.concat([z, y], axis=1, name="concat_z")
