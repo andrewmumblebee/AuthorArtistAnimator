@@ -47,3 +47,5 @@ For my models i've been using existing architectures as inspiration, lots of sma
 - https://github.com/carpedm20/DCGAN-tensorflow (Conditional Generator Architecture for the artist)
 - https://github.com/affinelayer/pix2pix-tensorflow (Base of Generator Architecture for the animator)
 - https://github.com/jguertl/Conditional-DCGAN (The Conditional Discriminator)
+
+The dataset i'm using is based on the site created by this repo: https://github.com/Gaurav0/Universal-LPC-Spritesheet-Character-Generator/tree/cee425fd2f5327ecb18448bc95fd37efa94b49ca
