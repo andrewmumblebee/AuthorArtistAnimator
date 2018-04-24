@@ -30,7 +30,7 @@ def tileImage(imgs, size):
             i = idx // d
             j = idx-i*d
             img[j * h:j * h + h, i * w:i * w + w, :] = image
-        return img
+        return ((img * 255.) + 1) * 2
     else:
         raise ValueError('in merge(images,size) images parameter '
                         'must have dimensions: HxW or HxWx3 or HxWx4')
@@ -47,9 +47,13 @@ session = tf.Session(graph=graph,config=config)
 def index():
     return render_template('index.html')
 
-@app.route('/generator')
-def generator():
-    return render_template('generator.html')
+@app.route('/author')
+def author():
+    return render_template('author.html')
+
+@app.route('/customizer')
+def customizer():
+    return render_template('customizer.html')
 
 @app.route('/training')
 def training():
@@ -59,13 +63,18 @@ def training():
 def generate_sprite():
     #text = request.args.get('text', 'naked', type=str)
     z1 = np.random.uniform(-1, +1, [64, 100]) # Each time we could feed in a random noise vector to give some more randomness.
-    l0 = np.array([[0%2, 0%8, 0%8, 0%8, 0%8, 0%8, 0%8] for x in range(64)])
+    #l0 = np.random.uniform(-1, +1, [64, 72])
+    l0 = np.zeros([64, 72])
+    l0[0][0] = np.random.random_sample() // 0.5
+    l0[0][1] = 1
+    #l0 = np.array([np.random.binomial(1, 0.1, 72) for x in range(64)])
+    print(l0)
     sprite = session.run(y_op, feed_dict={
         z_ip: z1,
         l_ip: l0
     })
 
-    scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\sprite.png", tileImage(sprite, [64, 64]) * 255.)
+    scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\sprite.png", tileImage(sprite, [64, 64]))
 
     return jsonify(result=time.time())
 
