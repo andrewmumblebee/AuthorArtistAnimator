@@ -77,6 +77,20 @@ function createJSONEncoding($, options) {
   return catalog;
 }
 
+function shuffle (array) {
+  var i = 0
+    , j = 0
+    , temp = null
+
+  for (i = array.length - 1; i > 0; i -= 1) {
+    j = Math.floor(Math.random() * (i + 1))
+    temp = array[i]
+    array[i] = array[j]
+    array[j] = temp
+  }
+  return array;
+}
+
 function cartesian(arg) {
   var r = [], max = arg.length-1;
   function helper(arr, i, data) {
@@ -244,6 +258,7 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
     //     }
     //   });
     // });
+    permutations = shuffle(permutations);
 
     const arrayColumn = (arr, n) => arr.map(x => x[n]);
 
