@@ -145,8 +145,8 @@ class Artist(GAN):
         self.g_sample = artist_generator(self.z, self.l, img_dimensions, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=False)
 
         ### DISCRIMINATORS ###
-        self.d_real = artist_discriminator(self.g_real, self.l, 64, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
-        self.d_fake = artist_discriminator(self.g_fake, self.l, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
+        self.d_real = discriminator(self.g_real, self.l, 64, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
+        self.d_fake = discriminator(self.g_fake, self.l, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
 
         print("BUILT MODELS")
 
