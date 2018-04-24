@@ -51,7 +51,7 @@ function createJSONEncoding($, options) {
       choices.push([element.getUniqueSelector() , value['label'] + (i + 1), value['prob'], req, prohib, data]);
       // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
       //let parent = element.parent().parent();
-      let id = element.attr('id').split('-');
+      let id = element.attr('id').split(/[-_](.+)/);
       let k = id[0];
       let name = id[1].replace(/_/g, ' ');
       if (!encoding[k])
