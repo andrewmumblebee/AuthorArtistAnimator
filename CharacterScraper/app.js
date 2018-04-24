@@ -278,23 +278,25 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
 
       // This has to be made synchronous, otherwise screenshot might be taken on wrong combination.
       await asyncForEach(permutations, async function(combination) {
-        await page.goto('http://127.0.0.1:8080/');
-        const pngImage = await page.$('#spritesheet');
         // Don't take a screenshot if it already exists.
         let output_path = `./dump/sheets/${arrayColumn(combination, 1).join('_')}.png`;
-        await asyncForEach(arrayColumn(combination, 0), async function(selector) {
-          await page.waitForSelector(selector);
-          await page.evaluate((selector) => {
-            document.querySelector(selector).click();
-          }, selector);
-        });
-        await page.waitFor(50);
-        //let valid = await page.evaluate(() => document.querySelector('#valid-selection').textContent);
-        await pngImage.screenshot({
-          path: output_path,
-          omitBackground: true,
-          type: "png"
-        });
+        if (!fs.existsSync(output_path)) {
+          await page.goto('http://127.0.0.1:8080/');
+          const pngImage = await page.$('#spritesheet');
+          await asyncForEach(arrayColumn(combination, 0), async function(selector) {
+            await page.waitForSelector(selector);
+            await page.evaluate((selector) => {
+              document.querySelector(selector).click();
+            }, selector);
+          });
+          await page.waitFor(50);
+          //let valid = await page.evaluate(() => document.querySelector('#valid-selection').textContent);
+          await pngImage.screenshot({
+            path: output_path,
+            omitBackground: true,
+            type: "png"
+          });
+        }
       });
       await browser.close();
     })(permutations);
