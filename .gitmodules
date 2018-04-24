@@ -1,0 +1,3 @@
+[submodule "CharacterScraper/LPC-Spritesheet-Character-Generator"]
+	path = CharacterScraper/LPC-Spritesheet-Character-Generator
+	url = https://github.com/Gaurav0/Universal-LPC-Spritesheet-Character-Generator.git
