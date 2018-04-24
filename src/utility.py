@@ -81,14 +81,14 @@ class BatchGenerator:
         return labels
 
     def find_images(self, path):
-        paths = np.array([])
+        paths = []
         for file in os.listdir(path):
             if not path.endswith('b.png'):
                 paths.append(file)
         labels = self.encode_labels(paths)
         # labels = labels / max_label_values
         # labels = (labels * 2) - 1 # Normalizing labels to -1 - 1 range. This assumes a minimum of 0 in original data.
-        return paths, labels
+        return np.array(paths), labels
 
 
 class ABatchGenerator(BatchGenerator):
