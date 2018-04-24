@@ -18,13 +18,8 @@ async function asyncForEach(array, callback) {
   }
 }
 
-function checkConstraint(element, constraints) {
-  var attributes = element[0]['attribs']
-  if (attributes['data-required']) {
-    return constraints.some((constraint) => attributes['data-required'].includes(constraint));
-  } else {
-    return false;
-  }
+function checkConstraint(constraints, data) {
+  return constraints.some((constraint) => data.includes(constraint));
 }
 
 function createJSONEncoding($, options) {
@@ -39,7 +34,21 @@ function createJSONEncoding($, options) {
     // Need to check parent, if a subheading then add as parent dict
     value['options'].each(function(i) {
       let element = $(this);
-      choices.push([element.getUniqueSelector() , value['label'] + (i + 1), value['prob']]);
+      let req = [];
+      if (element.attr('data-required')) {
+        req = element.attr('data-required').split(',');
+      }
+      let prohib = [];
+      if (element.attr('data-prohibited')) {
+        prohib = element.attr('data-prohibited').split(',');
+      }
+
+      let data = [];
+      if (key == 'body' || key =='sex') {
+        data = element.attr('id').replace('-', '=');
+      }
+
+      choices.push([element.getUniqueSelector() , value['label'] + (i + 1), value['prob'], req, prohib, data]);
       // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
       //let parent = element.parent().parent();
       let id = element.attr('id').split('-');
@@ -62,7 +71,6 @@ function createJSONEncoding($, options) {
     });
     catalog.push(choices);
   }
-  console.log(encoding);
 
   fs.writeFileSync('../web/static/data/encoding.json', JSON.stringify(encoding), 'utf8', (err) => console.log(err));
 
@@ -71,21 +79,31 @@ function createJSONEncoding($, options) {
 
 function cartesian(arg) {
   var r = [], max = arg.length-1;
-  function helper(arr, i) {
+  function helper(arr, i, data) {
       for (var j=0, l=arg[i].length; j<l; j++) {
-          var a = arr.slice(0); // clone arr
-          if (arg[i][j][2] > Math.random()) {
-            a.push(arg[i][j]);
-            if (i==max)
-                r.push(a);
-            else
-                helper(a, i+1);
+          let curr_data = data.concat(arg[i][j][5]);
+          let req_length = arg[i][j][3].length < 1;
+          if(req_length || checkConstraint(arg[i][j][3], curr_data)) { // If no conflicting required constraints.
+            if(!checkConstraint(arg[i][j][4], curr_data)) { // If no conflicting prohibited constraints.
+              var a = arr.slice(0); // clone arr
+              if (arg[i][j][2] > Math.random()) {
+                a.push(arg[i][j]);
+                if (i==max)
+                    r.push(a);
+                else
+                    helper(a, i+1, curr_data);
+              }
+            }
           }
       }
   }
-  helper([], 0);
+  helper([], 0, []);
   return r;
 }
+
+var array = [
+  []
+]
 
 
 function handleSex(sex) {
@@ -104,14 +122,14 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
         'prob': 1,
         'label': 's'
       },
-      'race': {
+      'body': {
         'options': $(options[1]).find('input'),
         'prob': 1,
         'label': 'r'
       },
       'legs': {
         'options': $(options[4]).find('input'),
-        'prob': 0.4,
+        'prob': 0.5,
         'label': 'l'
       },
       'clothes': {
@@ -121,7 +139,7 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
       },
       'hair': {
         'options': $(options[27]).find('input'),
-        'prob': 0.2,
+        'prob': 0.4,
         'label': 'h'
       },
       'eyes': {
@@ -138,8 +156,7 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
         'options': $(options[28]).find('input'),
         'prob': 0.2,
         'label': 'o'
-      }
-      // 'hair': $(options[11]).find('input'),
+      },
     };
 
     // var options_map = {
@@ -231,32 +248,30 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
     const arrayColumn = (arr, n) => arr.map(x => x[n]);
 
     (async (permutations) => {
-      const browser = await puppeteer.launch();
+      const browser = await puppeteer.launch({headless: true});
       const page = await browser.newPage();
-      await page.goto('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator');
       await page.setViewport({ width: 2000, height: 400 });
-      const pngImage = await page.$('#spritesheet');
       console.log("Fetching sprite sheets.");
 
       // This has to be made synchronous, otherwise screenshot might be taken on wrong combination.
       await asyncForEach(permutations, async function(combination) {
+        await page.goto('http://127.0.0.1:8080/');
+        const pngImage = await page.$('#spritesheet');
         // Don't take a screenshot if it already exists.
-        let output_path = `./dump/sheets/${arrayColumn(combination, 1).join('_')}.png`
-        if (!fs.existsSync(output_path)) {
-          await asyncForEach(arrayColumn(combination, 0), async function(selector) {
-            await page.evaluate((selector) => {
-              document.querySelector(selector).click();
-            }, selector);
-          });
-          await page.waitFor(150);
-          if ($('#valid-selection').text() == 1) {
-            await pngImage.screenshot({
-              path: output_path,
-              omitBackground: true,
-              type: "png"
-            });
-          }
-        }
+        let output_path = `./dump/sheets/${arrayColumn(combination, 1).join('_')}.png`;
+        await asyncForEach(arrayColumn(combination, 0), async function(selector) {
+          await page.waitForSelector(selector);
+          await page.evaluate((selector) => {
+            document.querySelector(selector).click();
+          }, selector);
+        });
+        await page.waitFor(50);
+        //let valid = await page.evaluate(() => document.querySelector('#valid-selection').textContent);
+        await pngImage.screenshot({
+          path: output_path,
+          omitBackground: true,
+          type: "png"
+        });
       });
       await browser.close();
     })(permutations);
