@@ -25,6 +25,7 @@ function checkConstraint(constraints, data) {
 function createJSONEncoding($, options) {
   var encoding = {};
   var catalog = [];
+  var probabilityKeys = {};
 
   var n = 0;
 
@@ -48,7 +49,10 @@ function createJSONEncoding($, options) {
         data = element.attr('id').replace('-', '=');
       }
 
-      choices.push([element.getUniqueSelector() , value['label'] + (i + 1), value['prob'], req, prohib, data]);
+      let label = value['label'] + (i + 1);
+      probabilityKeys[label] = true; // Basic way to enforce that each option appears at least once.
+
+      choices.push([element.getUniqueSelector() , label, value['prob'], req, prohib, data]);
       // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
       //let parent = element.parent().parent();
       let id = element.attr('id').split(/[-_](.+)/);
@@ -74,7 +78,7 @@ function createJSONEncoding($, options) {
 
   fs.writeFileSync('../web/static/data/encoding.json', JSON.stringify(encoding), 'utf8', (err) => console.log(err));
 
-  return catalog;
+  return catalog, probabilityKeys;
 }
 
 function shuffle (array) {
@@ -91,16 +95,20 @@ function shuffle (array) {
   return array;
 }
 
-function cartesian(arg) {
+function cartesian(arg, probabilityMap) {
   var r = [], max = arg.length-1;
   function helper(arr, i, data) {
       for (var j=0, l=arg[i].length; j<l; j++) {
+
           let curr_data = data.concat(arg[i][j][5]);
           let req_length = arg[i][j][3].length < 1;
+
           if(req_length || checkConstraint(arg[i][j][3], curr_data)) { // If no conflicting required constraints.
             if(!checkConstraint(arg[i][j][4], curr_data)) { // If no conflicting prohibited constraints.
-              var a = arr.slice(0); // clone arr
-              if (arg[i][j][2] > Math.random()) {
+              let a = arr.slice(0); // clone arr
+              let label = arg[i][j][4];
+
+              if (probabilityMap[label]['prob'] || arg[i][j][2] > Math.random()) {
                 a.push(arg[i][j]);
                 if (i==max)
                     r.push(a);
@@ -143,17 +151,17 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
       },
       'legs': {
         'options': $(options[4]).find('input'),
-        'prob': 0.5,
+        'prob': 0.2,
         'label': 'l'
       },
       'clothes': {
         'options': $(options[5]).find('input'),
-        'prob': 0.4,
+        'prob': 0.2,
         'label': 'c'
       },
       'hair': {
         'options': $(options[27]).find('input'),
-        'prob': 0.4,
+        'prob': 0.2,
         'label': 'h'
       },
       'eyes': {
@@ -190,7 +198,7 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
     //   // 'hair': $(options[11]).find('input'),
     // };
 
-    var catalog = createJSONEncoding($, options_map);
+    var catalog, probabilityMap = createJSONEncoding($, options_map);
 
 
     // var sex = $(options[0]).find('input');
@@ -201,7 +209,7 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
     // var legs = $(options[5]).find('input');
     // var clothes = $(options[6]).find('input');
     // var hair = $(options[11]).find('input');
-    var permutations = cartesian(catalog);
+    var permutations = cartesian(catalog, probabilityMap);
     console.log(`Capturing ${permutations.length} sprites.`);
 
     // Optimization 1 - Only take screenshots of sprites not already captured in dataset.
