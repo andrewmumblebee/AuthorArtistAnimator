@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request, g
+from flask import Flask, jsonify, render_template, request, g, url_for, json
 import tensorflow as tf
 import scipy
 import os
@@ -6,10 +6,10 @@ import time
 import numpy as np
 app = Flask(__name__)
 
-def load_graph():
+def load_graph(path):
     # We load the protobuf file from the disk and parse it to retrieve the
     # unserialized graph_def
-    with tf.gfile.GFile(r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models\model.pb', "rb") as f:
+    with tf.gfile.GFile(path, "rb") as f:
         graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
 
@@ -35,13 +35,23 @@ def tileImage(imgs, size):
         raise ValueError('in merge(images,size) images parameter '
                         'must have dimensions: HxW or HxWx3 or HxWx4')
 
-graph = load_graph()
-z_ip = graph.get_tensor_by_name("prefix/z:0")
-l_ip = graph.get_tensor_by_name("prefix/label:0")
-y_op = graph.get_tensor_by_name('prefix/Generator/sprite:0')
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.1
-session = tf.Session(graph=graph,config=config)
+config.gpu_options.per_process_gpu_memory_fraction = 0.7
+
+artist_graph = load_graph(r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models\Artist-model.pb')
+z_ip = artist_graph.get_tensor_by_name("prefix/z:0")
+l_ip = artist_graph.get_tensor_by_name("prefix/label:0")
+y_op = artist_graph.get_tensor_by_name('prefix/Generator_1/sprite:0')
+b_size = artist_graph.get_tensor_by_name("prefix/batch_size:0")
+artist = tf.Session(graph=artist_graph,config=config)
+
+animator_graph = load_graph(r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models\Animator-model.pb')
+b_ap = animator_graph.get_tensor_by_name("prefix/base:0")
+l_ap = animator_graph.get_tensor_by_name("prefix/label:0")
+y_ap = animator_graph.get_tensor_by_name('prefix/Generator_1/sprite:0')
+b_asize = animator_graph.get_tensor_by_name("prefix/batch_size:0")
+animator = tf.Session(graph=animator_graph,config=config)
+
 
 @app.route('/')
 def index():
@@ -53,28 +63,59 @@ def author():
 
 @app.route('/customizer')
 def customizer():
-    return render_template('customizer.html')
+    json_path = os.path.join(app.root_path, "static\data", "encoding.json")
+    data = json.load(open(json_path))
+    return render_template('customizer.html', encoding = data)
 
 @app.route('/training')
 def training():
     return render_template('training.html')
 
-@app.route('/_generate_sprite')
+@app.route('/_generate_sprite', methods=['POST', 'GET'])
 def generate_sprite():
+    combinations = request.get_json()
+    input_ = [[1, 0, 0] + combinations, [0, 1, 0] + combinations, [0, 0, 1] + combinations]
+    batch_size = np.zeros((len(input_), 1))
+    #filler = np.repeat(np.array([combos[0]]), 60, axis = 0)
+    #input_ = np.concatenate((combos, filler), axis = 0)
+
     #text = request.args.get('text', 'naked', type=str)
-    z1 = np.random.uniform(-1, +1, [64, 100]) # Each time we could feed in a random noise vector to give some more randomness.
+    #z1 = np.random.uniform(-1, +1, [64, 10]) # Each time we could feed in a random noise vector to give some more randomness.
+    z1 = np.zeros([len(input_), 10])
     #l0 = np.random.uniform(-1, +1, [64, 72])
-    l0 = np.zeros([64, 72])
-    l0[0][0] = np.random.random_sample() // 0.5
-    l0[0][1] = 1
+    #l0 = np.zeros([64, 72])
+    #l0[0][0] = np.random.random_sample() // 0.5
+    #l0[0][1] = 1
     #l0 = np.array([np.random.binomial(1, 0.1, 72) for x in range(64)])
-    print(l0)
-    sprite = session.run(y_op, feed_dict={
+    sprites = artist.run(y_op, feed_dict={
         z_ip: z1,
-        l_ip: l0
+        l_ip: input_,
+        b_size: batch_size
     })
 
-    scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\sprite.png", tileImage(sprite, [64, 64]))
+    animation = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    anim_maxindex = 15
+    frames = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    frames_maxindex = 13
+
+
+    batch_one = np.zeros((1, 1))
+
+    a = np.random.uniform(0, len(animation) - 1)
+    f = np.random.uniform(0, len(frames) - 1)
+    animation[a] = 1
+    frames[f] = 1
+
+    inp_ = animation + frames
+    anim = animator.run(y_ap, feed_dict= {
+        b_ap: [sprites[0]],
+        l_ap: inp_,
+        b_asize: batch_one
+    })
+
+    #'animations = 
+
+    scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\sprite.png", tileImage(anim, [64, 64]))
 
     return jsonify(result=time.time())
 
