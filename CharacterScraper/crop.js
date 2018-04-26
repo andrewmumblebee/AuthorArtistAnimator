@@ -11,77 +11,81 @@ function cropimage(folder, file) {
 
 var files = fs.readdirSync(charFolder);
 
-function cropAnimation(img, startY, frameCount, animCount, spriteId) {
-  if (0.2 > Math.random()) { // Adds some randomness to what sprites have their animations cropped.
+function cropAnimation(img, startY, frameCount, animCount, spriteId, animId) {
     for (let y = 0; y < animCount; y++) {
       yPos = y * 64 + startY;
       img.clone().crop(0, yPos, 64, 64)
-      .write(`./dump/animations/a${yPos / 64}_${spriteId}b.png`);
+      .write(`./dump/animations/a${animId + y}_${spriteId}b.png`);
     }
 
-    for (let x = 1; x < frameCount; x++) {
+    for (let x = 0; x < frameCount; x++) {
+      let x_ = (x + 1);
       for (let y = 0; y < animCount; y++) {
         yPos = y * 64 + startY;
-        img.clone().crop(x * 64, y * 64 + startY, 64, 64)
-        .write(`./dump/animations/a${yPos / 64}_f${x}_${spriteId}.png`);
+        img.clone().crop(x_ * 64, y * 64 + startY, 64, 64)
+        .write(`./dump/animations/a${animId + y}_f${x}_${spriteId}.png`);
       }
-      img.clone().crop(x * 64, 0, 64, 64)
-      .write(`./dump/animations/a0_f${x}_${spriteId}.png`);
-      img.clone().crop(x * 64, 64, 64, 64)
-      .write(`./dump/animations/a1_f${x}_${spriteId}.png`);
-      img.clone().crop(x * 64, 128, 64, 64)
-      .write(`./dump/animations/a2_f${x}_${spriteId}.png`);
-      img.clone().crop(x * 64, 192, 64, 64)
-      .write(`./dump/animations/a3_f${x}_${spriteId}.png`);
     }
-  }
 }
 
 (async (files) => {
   let promises = [];
   for (let i = 0; i <= files.length; i++) {
-    promise = new Promise((resolve) => {;
+    promise = new Promise((resolve) => {
       jimp.read(`${charFolder}/${files[i]}`, function (err, img) {
-        img.clone().crop(0, 64, 64, 64)
-        .write(`./dump/sprites/f0_${files[i]}`);
-        img.clone().crop(0, 128, 64, 64)
-        .write(`./dump/sprites/f1_${files[i]}`);
-        img.clone().crop(0, 0, 64, 64)
-        .write(`./dump/sprites/f2_${files[i]}`);
-
-        cropAnimation(img, 0, 7, 4, i);
-        cropAnimation(img, 64 * 4, 8, 4, i);
-        cropAnimation(img, 64 * 8, 9, 4, i);
-        cropAnimation(img, 64 * 12, 6, 4, i);
-        cropAnimation(img, 64 * 16, 13, 4, i);
-        cropAnimation(img, 64 * 20, 6, 1, i);
-
-        // let n = 7; // Frame count
+        if (err)
+          console.log(err);
+        // img.clone().crop(0, 64, 64, 64)
+        // .write(`./dump/sprites/f0_${files[i]}`);
+        // img.clone().crop(0, 128, 64, 64)
+        // .write(`./dump/sprites/f1_${files[i]}`);
         // img.clone().crop(0, 0, 64, 64)
-        //   .write(`./dump/animations/a0_${i}b.png`);
-        //   img.clone().crop(0, 64, 64, 64)
-        //   .write(`./dump/animations/a1_${i}b.png`);
-        //   img.clone().crop(0, 128, 64, 64)
-        //   .write(`./dump/animations/a2_${i}b.png`);
-        //   img.clone().crop(0, 192, 64, 64)
-        //   .write(`./dump/animations/a3_${i}b.png`);
-        // for (x = 1; x < n; x++) {
-        //   img.clone().crop(x * 64, 0, 64, 64)
-        //   .write(`./dump/animations/a0_f${x}_${i}.png`);
-        //   img.clone().crop(x * 64, 64, 64, 64)
-        //   .write(`./dump/animations/a1_f${x}_${i}.png`);
-        //   img.clone().crop(x * 64, 128, 64, 64)
-        //   .write(`./dump/animations/a2_f${x}_${i}.png`);
-        //   img.clone().crop(x * 64, 192, 64, 64)
-        //   .write(`./dump/animations/a3_f${x}_${i}.png`);
-        // }
+        // .write(`./dump/sprites/f2_${files[i]}`);
 
-        resolve();
+        if (0.9 < Math.random()) {
+          var random = Math.random();
+
+
+          if (random < 1/6)
+            cropAnimation(img, 0, 7, 3, i, 0);
+          if (1/6 <= random && random < 1/6 * 2)
+            cropAnimation(img, 64 * 4, 8, 3, i, 3);
+          if (1/6 * 2 <= random && random < 1/6 * 3)
+            cropAnimation(img, 64 * 8, 9, 3, i, 6);
+          if (1/6 * 3 <= random && random < 1/6 * 4)
+            cropAnimation(img, 64 * 12, 6, 3, i, 9);
+          if (1/6 * 4 <= random && random < 1/6 * 5)
+            cropAnimation(img, 64 * 16, 13, 3, i, 12);
+          if (1/6 * 5 <= random)
+            cropAnimation(img, 64 * 20, 6, 1, i, 15);
+
+          // let n = 7; // Frame count
+          // img.clone().crop(0, 0, 64, 64)
+          //   .write(`./dump/animations/a0_${i}b.png`);
+          //   img.clone().crop(0, 64, 64, 64)
+          //   .write(`./dump/animations/a1_${i}b.png`);
+          //   img.clone().crop(0, 128, 64, 64)
+          //   .write(`./dump/animations/a2_${i}b.png`);
+          //   img.clone().crop(0, 192, 64, 64)
+          //   .write(`./dump/animations/a3_${i}b.png`);
+          // for (x = 1; x < n; x++) {
+          //   img.clone().crop(x * 64, 0, 64, 64)
+          //   .write(`./dump/animations/a0_f${x}_${i}.png`);
+          //   img.clone().crop(x * 64, 64, 64, 64)
+          //   .write(`./dump/animations/a1_f${x}_${i}.png`);
+          //   img.clone().crop(x * 64, 128, 64, 64)
+          //   .write(`./dump/animations/a2_f${x}_${i}.png`);
+          //   img.clone().crop(x * 64, 192, 64, 64)
+          //   .write(`./dump/animations/a3_f${x}_${i}.png`);
+          // }
+        }
+          resolve();
       });
     });
     promises.push(promise);
 
-    if (promises.length >= 5) {
+    if (promises.length >= 2) {
+      console.log("next batch");
       await Promise.all(promises);
       promises = [];
     }
