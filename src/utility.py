@@ -38,57 +38,65 @@ class BatchGenerator:
     """
     def __init__(self, dataset_folder):
         """ Retrieve sprite images and label them based on their filename. """
-        self.path, self.label = self.find_images(dataset_folder)
+        self.path, self.encoder = self.find_images(dataset_folder)
         self.reset_buffer()
         self.dataset_folder = dataset_folder
 
     def get_batch(self, batch_size, color=True):
         b_idx = np.random.randint(0, self.buffer.shape[0] - 1, batch_size) # Random index
         idx = self.buffer[b_idx]
-        x = get_image_data(self.path[idx], self.dataset_folder) # Image and Respective Label
+        paths = self.path[idx]
+        x = get_image_data(paths, self.dataset_folder) # Image and Respective Label
         x = (x / 255) # Normalize Channel values to 0-1 range.
         x = (x * 2) - 1 # Further Normalize to -1 to 1 range.
-        t = self.label[idx]
+        l = self.get_encoding(paths)
         self.buffer = np.delete(self.buffer, b_idx)
-        return x, t
+        return x, l
 
-    def get_file_count(self):
-        return self.path.shape[0]
-
-    def get_label_size(self):
-        return self.label.shape[1]
-
-    def reset_buffer(self):
-        self.buffer = np.arange(self.path.shape[0])
-
-    def encode_labels(self, paths):
+    def get_labels(self, paths):
         labels = []
         for path in paths:
             img_label = []
             ids = os.path.splitext(path)[0].split("_")
             for label in ids:
-                if ('ea' in label or 'cl' in label):
-                    img_label.append(label[2:])
-                elif label.isdigit():
+                if label.isdigit():
                     pass
                 else:
                     img_label.append(label[1:])
             labels.append(img_label)
+        return labels
+
+    def get_encoding(self, paths):
+        labels = self.get_labels(paths)
+        encodings = self.encoder.transform(labels).toarray()
+        return encodings
+
+    def get_file_count(self):
+        return self.path.shape[0]
+
+    def get_label_size(self):
+        return sum(self.encoder.n_values_)
+
+    def reset_buffer(self):
+        self.buffer = np.arange(self.path.shape[0])
+
+    def generate_encoder(self, paths):
+        labels = self.get_labels(paths)
         enc = OneHotEncoder()
-        labels = np.array(labels, dtype=np.float32)
+        #labels = np.array(labels, dtype=np.float32)
         enc.fit(labels)
         labels = enc.transform(labels).toarray()
-        return labels
+        return enc
 
     def find_images(self, path):
         paths = []
         for file in os.listdir(path):
             if not path.endswith('b.png'):
                 paths.append(file)
-        labels = self.encode_labels(paths)
+        encoder = self.generate_encoder(paths)
         # labels = labels / max_label_values
         # labels = (labels * 2) - 1 # Normalizing labels to -1 - 1 range. This assumes a minimum of 0 in original data.
-        return np.array(paths), labels
+        return np.array(paths), encoder
 
 
 class ABatchGenerator(BatchGenerator):
@@ -98,7 +106,7 @@ class ABatchGenerator(BatchGenerator):
     """
     def __init__(self, dataset_folder):
         """ Retrieve sprite images and label them based on their filename. """
-        self.path, self.label, self.base = self.find_images(dataset_folder)
+        self.path, self.encoder, self.base = self.find_images(dataset_folder)
         self.curr_frame = 0
         self.b_idx = 0
         self.reset_buffer()
@@ -106,17 +114,29 @@ class ABatchGenerator(BatchGenerator):
 
     # Need a second index in the buffer, corresponding to the frame to retrieve.
 
+    def get_encoding(self, paths):
+        labels, bases = self.get_labels(paths)
+        encodings = self.encoder.transform(labels).toarray()
+        return encodings
+
     def get_batch(self, batch_size, color=True):
         b_idx = np.random.randint(0, self.buffer.shape[0] - 1, batch_size) # Random index
         idx = self.buffer[b_idx]
-        path = self.path[idx]
-        x = get_image_data(path, self.dataset_folder) # Image and Respective Label
+        paths = self.path[idx]
+        x = get_image_data(paths, self.dataset_folder) # Image and Respective Label
         x = (x / 255) # Normalize Channel values to 0-1 range.
         x = (x * 2) - 1 # Further Normalize to -1 to 1 range.
-        t = self.label[idx]
+        l = self.get_encoding(paths)
         b = get_image_data(self.base[idx], self.dataset_folder)
         self.buffer = np.delete(self.buffer, b_idx)
-        return x, t, b
+        return x, l, b
+
+    def generate_encoder(self, paths):
+        labels, bases = self.get_labels(paths)
+        enc = OneHotEncoder()
+        enc.fit(labels)
+        print(enc)
+        return enc, bases
 
     def find_images(self, path):
         paths = []
@@ -124,26 +144,19 @@ class ABatchGenerator(BatchGenerator):
             if not file.endswith('b.png'):
                 paths.append(file)
         paths = np.array(paths)
-        labels, bases = self.encode_labels(paths)
+        encoder, bases = self.generate_encoder(paths)
         # labels = labels / max_label_values
         # labels = (labels * 2) - 1 # Normalizing labels to -1 - 1 range. This assumes a minimum of 0 in original data.
-        return paths, labels, bases
+        return paths, encoder, bases
 
-    def encode_labels(self, paths):
-        frames = []
-        animations = []
+    def get_labels(self, paths):
+        labels = []
         bases = []
         for path in paths:
             img_label = []
             ids = os.path.splitext(path)[0].split("_")
-            animations.append([ids[0][1:]])
-            frames.append([ids[1][1:]])
+            labels.append([ids[0][1:], ids[1][1:]])
             bases.append(ids[0] + '_' + ids[2] + 'b.png')
-        enc = OneHotEncoder()
-        #animations = np.array(animations, dtype=np.float32)
-        enc.fit(animations)
-        animations = enc.transform(animations).toarray()
-        labels = np.concatenate((animations, frames), axis=1)
         labels = np.array(labels, dtype=np.float32)
         bases = np.array(bases)
         return labels, bases
