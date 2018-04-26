@@ -9,6 +9,7 @@ def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTra
         cgan_layer = True
         if cgan_layer:
             # This is based on the CGAN architecture
+            batch_size = tf.shape(batch_size)[0]
 
             # conditional layer
             yb = tf.reshape(y, [batch_size, 1, 1, labelSize])
@@ -38,10 +39,14 @@ def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTra
             h3 = lrelu(h3)
             h3 = conv_cond_concat(h3, yb)
 
+            
+
             # fc1
-            n_b, n_h, n_w, n_f = [int(x) for x in h3.get_shape()]
-            h4 = tf.reshape(h3, [n_b, n_h * n_w * n_f])
-            h4 = fc(h4, n_h * n_w * n_f, scope='d_fc1')
+            r_shape = tf.shape(h3)
+            f_shape = h3.get_shape()
+            #n_b, n_h, n_w, n_f = [int(x) for x in tf.shape(h3)]
+            h4 = tf.reshape(h3, [r_shape[0], f_shape[1] * f_shape[2] * f_shape[3]])
+            h4 = fc(h4, f_shape[1] * f_shape[2] * f_shape[3], scope='d_fc1')
         else:
             # This is based on the DCGAN tensorflow Architecture
             yb = tf.reshape(y, [batch_size, 1, 1, labelSize])
@@ -68,13 +73,14 @@ def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTra
 
     return h4
 
-def artist_generator(z, y, i_dim, gf_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
+def artist_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=False, isTraining=True):
 
     with tf.variable_scope("Generator") as scope:
         if reuse: scope.reuse_variables()
 
         cgan = False
         if cgan:
+            
             dim_0_h, dim_0_w = i_dim[0], i_dim[1] # Building backwards convolutional layers
             dim_1_h, dim_1_w = calcImageSize(dim_0_h, dim_0_w, stride=2)
             dim_2_h, dim_2_w = calcImageSize(dim_1_h, dim_1_w, stride=2)
@@ -131,6 +137,7 @@ def artist_generator(z, y, i_dim, gf_dim, c_dim, batch_size, labelSize, reuse=Fa
             s_h, s_w = i_dim[0], i_dim[1]
             s_h2, s_h4, s_h8 = int(s_h/2), int(s_h/4), int(s_h/8)
             s_w2, s_w4, s_w8 = int(s_w/2), int(s_w/4), int(s_w/8)
+            batch_size = tf.shape(b_size)[0]
 
             yb = tf.reshape(y, [batch_size, 1, 1, labelSize])
             z = tf.concat([z, y], axis=1, name="concat_z")
@@ -161,12 +168,13 @@ def artist_generator(z, y, i_dim, gf_dim, c_dim, batch_size, labelSize, reuse=Fa
 
     return y
 
-def animation_generator(z, y, i_dim, gf_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
+def animation_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=False, isTraining=True):
     with tf.variable_scope("Generator") as scope:
         if reuse: scope.reuse_variables()
 
         s = i_dim[0]
         s2, s4, s8, s16, s32, s64 = int(s/2), int(s/4), int(s/8), int(s/16), int(s/32), int(s/64)
+        batch_size = tf.shape(b_size)[0]
 
         yb = tf.reshape(y, [batch_size, 1, 1, labelSize])
         z = conv_cond_concat(z, yb)
