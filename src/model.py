@@ -10,7 +10,7 @@ from architecture import discriminator, artist_generator, animation_generator
 
 class GAN(object):
     def __init__(self, sess, isTraining, imageSize, labelSize, args):
-        self.batch_size = args.batch_size
+        self.bs = args.batch_size
         self.learning_rate = args.learning_rate
         self.zdim = args.zdim
         self.isTraining = isTraining
@@ -21,6 +21,8 @@ class GAN(object):
         self.cdim = args.cdim
         self.labelSize = labelSize
         self.sess = sess
+        self.gf_dim = args.gf_dim
+        self.df_dim = args.df_dim
 
     def loadModel(self, model_path=None):
         if model_path: self.saver.restore(self.sess, model_path)
@@ -32,19 +34,20 @@ class Animator(GAN):
         return
 
     def buildModel(self):
-        self.l = tf.placeholder(tf.float32, [self.batch_size, self.labelSize], name="label")
+        self.batch_size = tf.placeholder(tf.int32, [None, 1], name="batch_size") # Enable dynamic batch size.
+        self.l = tf.placeholder(tf.float32, [self.batch_size.get_shape()[0], self.labelSize], name="label")
 
         img_dimensions = [self.imageSize[0], self.imageSize[1], self.cdim]
-        self.z = tf.placeholder(tf.float32, [self.batch_size] + img_dimensions, name="base")
-        self.g_real = tf.placeholder(tf.float32, [self.batch_size] + img_dimensions, name="images")
+        self.z = tf.placeholder(tf.float32, [self.batch_size.get_shape()[0]] + img_dimensions, name="base")
+        self.g_real = tf.placeholder(tf.float32, [self.batch_size.get_shape()[0]] + img_dimensions, name="images")
 
         ### GENERATORS ###
-        self.g_fake = animation_generator(self.z, self.l, img_dimensions, 64, self.cdim, self.batch_size, self.labelSize)
-        self.g_sample = animation_generator(self.z, self.l, img_dimensions, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=False)
+        self.g_fake = animation_generator(self.z, self.l, img_dimensions, self.gf_dim, self.cdim, self.batch_size, self.labelSize)
+        self.g_sample = animation_generator(self.z, self.l, img_dimensions, self.gf_dim, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=False)
 
         ### DISCRIMINATORS ###
-        self.d_real = discriminator(self.z, self.l, 64, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
-        self.d_fake = discriminator(self.z, self.l, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
+        self.d_real = discriminator(self.z, self.l, self.df_dim, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
+        self.d_fake = discriminator(self.z, self.l, self.df_dim, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
 
         # define loss
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_real, labels=tf.ones_like (self.d_real)))
@@ -70,26 +73,27 @@ class Animator(GAN):
         self.sess.run(init)
         self.loadModel(self.reload)
         start = time.time()
+        self.batch_s = np.zeros((self.bs, 1))
 
         for epoch in range(self.epoch):
 
-            batch_steps = batch_generator.get_file_count() // self.batch_size
+            batch_steps = batch_generator.get_file_count() // self.bs
 
             for step in range(batch_steps):
 
-                batch_z = np.random.uniform(-1., +1., [self.batch_size, self.zdim])
-                batch_images, batch_labels, batch_bases = batch_generator.get_batch(self.batch_size)
+                batch_z = np.random.uniform(-1., +1., [self.bs, self.zdim])
+                batch_images, batch_labels, batch_bases = batch_generator.get_batch(self.bs)
                 # if step % 5 == 0:
                 #     batch_labels = batch_labels * np.random.normal(0 , 1, [self.batch_size, self.labelSize])
 
                 if step % 5 == 1:
-                    feed_dict = {self.z : batch_bases, self.l : batch_labels, self.g_real : batch_images}
+                    feed_dict = {self.z : batch_bases, self.l : batch_labels, self.g_real : batch_images, self.batch_size: self.batch_s}
                     _, d_loss, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_real, self.summary], feed_dict = feed_dict)
                 else:
                     # Update generator
-                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss], feed_dict={self.z: batch_bases, self.l: batch_labels, self.g_real: batch_images})
-                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss], feed_dict={self.z: batch_bases, self.l: batch_labels, self.g_real: batch_images})
-                    feed_dict = {self.z : batch_bases, self.l : batch_labels, self.g_real : batch_images}
+                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss], feed_dict={self.z: batch_bases, self.l: batch_labels, self.g_real: batch_images, self.batch_size: self.batch_s})
+                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss], feed_dict={self.z: batch_bases, self.l: batch_labels, self.g_real: batch_images, self.batch_size: self.batch_s})
+                    feed_dict = {self.z : batch_bases, self.l : batch_labels, self.g_real : batch_images, self.batch_size: self.batch_s}
                     _, d_loss, g_fake, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_fake, self.g_real, self.summary], feed_dict = feed_dict)
 
                 if step % 10 == 0:
@@ -104,17 +108,17 @@ class Animator(GAN):
 
             batch_generator.reset_buffer()
 
-            #freeze_graph('Generator/sprite')
+            freeze_graph('Generator_1/sprite', 'Animator')
 
     def generate_sample(self, real_image, batch_z, batch_labels, epoch, step, bases):
         # Run models outputting images as training is run.
 
-        l0 = np.random.uniform(-1, +1, [self.batch_size, self.labelSize])
-        l1 = np.array([np.random.binomial(1, 0.5, self.labelSize) for x in range(self.batch_size)])
+        l0 = np.random.uniform(-1, +1, [self.bs, self.labelSize])
+        l1 = np.array([np.random.binomial(1, 0.5, self.labelSize) for x in range(self.bs)])
 
-        binomial_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:l1})
-        noise_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:l0})
-        matched_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:batch_labels})
+        binomial_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:l1, self.batch_size: self.batch_s})
+        noise_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:l0, self.batch_size: self.batch_s})
+        matched_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:batch_labels, self.batch_size: self.batch_s})
 
         scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_real.png".format(epoch, step)), tileImage(real_image, [64, 64]))
         scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image, [64, 64]))
@@ -133,20 +137,21 @@ class Artist(GAN):
 
     def buildModel(self):
         # define variables
-        self.z = tf.placeholder(tf.float32, [self.batch_size, self.zdim], name="z")
-        self.l = tf.placeholder(tf.float32, [self.batch_size, self.labelSize], name="label")
+        self.batch_size = tf.placeholder(tf.int32, [None, 1], name="batch_size")
+        self.z = tf.placeholder(tf.float32, [self.batch_size.get_shape()[0], self.zdim], name="z")
+        self.l = tf.placeholder(tf.float32, [self.batch_size.get_shape()[0], self.labelSize], name="label")
 
         img_dimensions = [self.imageSize[0], self.imageSize[1], self.cdim]
-        self.g_real = tf.placeholder(tf.float32, [self.batch_size] + img_dimensions, name="images")
+        self.g_real = tf.placeholder(tf.float32, [self.batch_size.get_shape()[0]] + img_dimensions, name="images")
 
 
         ### GENERATORS ###
-        self.g_fake = artist_generator(self.z, self.l, img_dimensions, 64, self.cdim, self.batch_size, self.labelSize)
-        self.g_sample = artist_generator(self.z, self.l, img_dimensions, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=False)
+        self.g_fake = artist_generator(self.z, self.l, img_dimensions, self.gf_dim, self.cdim, self.batch_size, self.labelSize)
+        self.g_sample = artist_generator(self.z, self.l, img_dimensions, self.gf_dim, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=False)
 
         ### DISCRIMINATORS ###
-        self.d_real = discriminator(self.g_real, self.l, 64, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
-        self.d_fake = discriminator(self.g_fake, self.l, 64, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
+        self.d_real = discriminator(self.g_real, self.l, self.df_dim, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
+        self.d_fake = discriminator(self.g_fake, self.l, self.df_dim, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
 
         print("BUILT MODELS")
 
@@ -185,26 +190,26 @@ class Artist(GAN):
         self.sess.run(init)
         self.loadModel(self.reload)
         start = time.time()
+        self.batch_s = np.zeros((self.bs, 1))
 
         for epoch in range(self.epoch):
 
-            batch_steps = batch_generator.get_file_count() // self.batch_size
+            batch_steps = batch_generator.get_file_count() // self.bs
 
             for step in range(batch_steps):
 
-                batch_z = np.random.uniform(-1., +1., [self.batch_size, self.zdim])
-                batch_images, batch_labels = batch_generator.get_batch(self.batch_size)
+                batch_z = np.random.uniform(-1., +1., [self.bs, self.zdim])
+                batch_images, batch_labels = batch_generator.get_batch(self.bs)
                 if step % 5 == 0:
-                    batch_labels = batch_labels * np.random.normal(0 , 1, [self.batch_size, self.labelSize])
+                    batch_labels = batch_labels * np.random.uniform(0, 1, [self.bs, self.labelSize])
 
+                feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images, self.batch_size : self.batch_s}
                 if step % 5 == 1:
-                    feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images}
                     _, d_loss, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_real, self.summary], feed_dict = feed_dict)
-                else:
+                else:  
                     # Update generator
-                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
-                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels})
-                    feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images}
+                    _, g_loss              = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels, self.batch_size : self.batch_s})
+                    _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels, self.batch_size : self.batch_s})
                     _, d_loss, g_fake, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_fake, self.g_real, self.summary], feed_dict = feed_dict)
 
                 if step % 10 == 0:
@@ -216,27 +221,28 @@ class Artist(GAN):
                     self.writer.add_summary(summary, step)
                     self.generate_sample(g_real, batch_z, batch_labels, epoch, step)
 
+            freeze_graph('Generator_1/sprite', 'Artist')
+
             batch_generator.reset_buffer()
 
-            freeze_graph('Generator/sprite')
 
     def generate_sample(self, real_image, batch_z, batch_labels, epoch, step):
         # Run models outputting images as training is run.
 
-        l0 = np.random.uniform(-1, +1, [self.batch_size, self.labelSize])
+        l0 = np.random.uniform(-1, +1, [self.bs, self.labelSize])
         #l1 = np.random.uniform(-1, +1, [self.batch_size, self.labelSize])
-        l1 = np.array([np.random.binomial(1, 0.5, self.labelSize) for x in range(self.batch_size)])
+        l1 = np.array([np.random.binomial(1, 0.5, self.labelSize) for x in range(self.bs)])
         #l1 = np.array([[x % 2, x % 7, x % 12, x % 20, x % 20, x % 20, x % 30] for x in range(self.batch_size)])
         #l1 = np.array([[x % 2, x % 8] for x in range(self.batch_size)])
         #l1 = np.array([[0%2, 0%7] for x in range(self.batch_size)])
-        z1 = np.random.uniform(-1, +1, [self.batch_size, self.zdim])
+        z1 = np.random.uniform(-1, +1, [self.bs, self.zdim])
         z2 = np.random.uniform(-1, +1, [self.zdim])
         z2 = np.expand_dims(z2, axis=0)
-        z2 = np.repeat(z2, repeats=self.batch_size, axis=0)
+        z2 = np.repeat(z2, repeats=self.bs, axis=0)
 
-        binomial_image = self.sess.run(self.g_sample, feed_dict={self.z:z1, self.l:l1})
-        noise_image = self.sess.run(self.g_sample, feed_dict={self.z:z2, self.l:l0})
-        matched_image = self.sess.run(self.g_sample, feed_dict={self.z:batch_z, self.l:batch_labels})
+        binomial_image = self.sess.run(self.g_sample, feed_dict={self.z:z1, self.l:l1, self.batch_size : self.batch_s})
+        noise_image = self.sess.run(self.g_sample, feed_dict={self.z:z2, self.l:l0, self.batch_size : self.batch_s})
+        matched_image = self.sess.run(self.g_sample, feed_dict={self.z:batch_z, self.l:batch_labels, self.batch_size : self.batch_s})
 
         scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_real.png".format(epoch, step)), tileImage(real_image, [64, 64]))
         scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image, [64, 64]))
