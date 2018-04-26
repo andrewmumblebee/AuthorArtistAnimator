@@ -26,9 +26,10 @@
       });
     </script>
     <ul>
-        <li><a href="/">Home</a></li>
-        <li><a href="{{url_for('generator')}}">Sprite Generator</a></li>
-        <li><a href="{{url_for('training')}}">Training</a></li>
+      <li><a href="/">Home</a></li>
+      <li><a href="{{url_for('customizer')}}">Sprite Customizer</a></li>
+      <li><a href="{{url_for('author')}}">Sprite Author</a></li>
+      <li><a href="{{url_for('training')}}">Training</a></li>
     </ul>
     <button type="button" id="sprite_g">Click Me For Sprites!</button>
     <img src="{{url_for('static',filename='images/sprite.png')}}" alt="WIP" id="placeholder">

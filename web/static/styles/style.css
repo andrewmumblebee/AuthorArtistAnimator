@@ -1,29 +1,29 @@
 body {
-    background-color: rgba(42, 155, 61, 0.966);
+    background-color: rgb(0, 0, 0);
     margin: 0px;
     font-family: 'Roboto', sans-serif;
 }
 
-#placeholder {
-    display: block;
-    padding-top: 100px;
-    margin: auto;
-    width: 30%;
-}
-
-ul {
-    list-style-type: none;
+#nav {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    background-color: #333;
+    background-color: rgba(42, 155, 61, 0.966);
+}
+
+#placeholder {
+    width: 80%;
 }
 
 li {
+    list-style-type: none;
+}
+
+#nav li {
     float: left;
 }
 
-li a {
+#nav li a {
     display: block;
     color: white;
     text-align: center;
@@ -32,6 +32,34 @@ li a {
 }
 
 /* Change the link color to #111 (black) on hover */
-li a:hover {
+#nav li a:hover {
     background-color: #111;
+}
+
+#options>ul>li>ul {
+    display: none;
+}
+
+#container {
+    display: flex;
+    justify-content: center;
+}
+
+.option_heading {
+    font-size: 30px;
+    font-weight: bold;
+}
+
+#options {
+    color: white;
+}
+
+#options, #sprites {
+    width: 50%;
+}
+
+#sprites {
+    display: flex;
+    flex-flow: column;
+    align-items: center;
 }

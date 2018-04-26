@@ -9,12 +9,14 @@
     <link rel="stylesheet" href="{{url_for('static',filename='styles/style.css')}}">
   </head>
   <body>
-    <ul>
+    <div id ="container">
+      <ul id="nav">
         <li><a href="/">Home</a></li>
         <li><a href="{{url_for('customizer')}}">Sprite Customizer</a></li>
         <li><a href="{{url_for('author')}}">Sprite Author</a></li>
         <li><a href="{{url_for('training')}}">Training</a></li>
-    </ul>
-    <img src="{{url_for('static',filename='images/work-in-progress.png')}}" alt="WIP" id="placeholder">
+      </ul>
+      <img src="{{url_for('static',filename='images/work-in-progress.png')}}" alt="WIP" id="placeholder">
+    </div>
   </body>
 </html>
