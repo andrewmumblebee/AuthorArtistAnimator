@@ -7,8 +7,10 @@ if __name__=="__main__":
     flags = tf.app.flags
     parser = argparse.ArgumentParser()
     flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
-    flags.DEFINE_integer("zdim", 100, "The noise vector size")
+    flags.DEFINE_integer("zdim", 10, "The noise vector size")
     flags.DEFINE_integer("cdim", 4, "Colour dimensions of image, 4 for alpha layer [4]")
+    flags.DEFINE_integer("gf_dim", 64, "Colour dimensions of image, 4 for alpha layer [64]")
+    flags.DEFINE_integer("df_dim", 64, "Colour dimensions of image, 4 for alpha layer [64]")
     flags.DEFINE_integer("image_height", 64, "The size of batch images [64]")
     flags.DEFINE_integer("image_width", 64, "The size of batch images [64]")
     flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
