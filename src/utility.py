@@ -11,7 +11,8 @@ def get_image_data(images, path):
         # x_dim = np.reshape(im, [-1, 64, 4])
         # copies = np.reshape(x_dim, [-1, 64, 64, 4])
         data.append(np.reshape(im.getdata(), [64, 64, 4]))
-    return np.array(data)
+    norm_data = ((np.array(data) / 255)* 2) - 1
+    return norm_data
 
 def calcImageSize(dh, dw, stride):
     return int(np.ceil(float(dh)/float(stride))), int(np.ceil(float(dw)/float(stride)))
@@ -47,8 +48,6 @@ class BatchGenerator:
         idx = self.buffer[b_idx]
         paths = self.path[idx]
         x = get_image_data(paths, self.dataset_folder) # Image and Respective Label
-        x = (x / 255) # Normalize Channel values to 0-1 range.
-        x = (x * 2) - 1 # Further Normalize to -1 to 1 range.
         l = self.get_encoding(paths)
         self.buffer = np.delete(self.buffer, b_idx)
         return x, l
@@ -115,8 +114,9 @@ class ABatchGenerator(BatchGenerator):
     # Need a second index in the buffer, corresponding to the frame to retrieve.
 
     def get_encoding(self, paths):
-        labels, bases = self.get_labels(paths)
-        encodings = self.encoder.transform(labels).toarray()
+        animations, frames, bases = self.get_labels(paths)
+        encodings = self.encoder.transform(animations).toarray()
+        encodings = np.concatenate((encodings, frames), axis=1)
         return encodings
 
     def get_batch(self, batch_size, color=True):
@@ -124,19 +124,19 @@ class ABatchGenerator(BatchGenerator):
         idx = self.buffer[b_idx]
         paths = self.path[idx]
         x = get_image_data(paths, self.dataset_folder) # Image and Respective Label
-        x = (x / 255) # Normalize Channel values to 0-1 range.
-        x = (x * 2) - 1 # Further Normalize to -1 to 1 range.
         l = self.get_encoding(paths)
         b = get_image_data(self.base[idx], self.dataset_folder)
         self.buffer = np.delete(self.buffer, b_idx)
         return x, l, b
 
     def generate_encoder(self, paths):
-        labels, bases = self.get_labels(paths)
+        animations, _, bases = self.get_labels(paths)
         enc = OneHotEncoder()
-        enc.fit(labels)
-        print(enc)
+        enc.fit(animations)
         return enc, bases
+
+    def get_label_size(self):
+        return sum(self.encoder.n_values_) + 1
 
     def find_images(self, path):
         paths = []
@@ -150,16 +150,17 @@ class ABatchGenerator(BatchGenerator):
         return paths, encoder, bases
 
     def get_labels(self, paths):
-        labels = []
+        frames = []
+        animations = []
         bases = []
         for path in paths:
             img_label = []
             ids = os.path.splitext(path)[0].split("_")
-            labels.append([ids[0][1:], ids[1][1:]])
+            animations.append([ids[0][1:]])
+            frames.append([ids[1][1:]])
             bases.append(ids[0] + '_' + ids[2] + 'b.png')
-        labels = np.array(labels, dtype=np.float32)
         bases = np.array(bases)
-        return labels, bases
+        return animations, frames, bases
 
 
     # def get_batch(self, batch_size, color=True):
