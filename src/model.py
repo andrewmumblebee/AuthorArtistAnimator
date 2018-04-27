@@ -120,10 +120,10 @@ class Animator(GAN):
         noise_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:l0, self.batch_size: self.batch_s})
         matched_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:batch_labels, self.batch_size: self.batch_s})
 
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_real.png".format(epoch, step)), tileImage(real_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_noise.png".format(epoch, step)), tileImage(noise_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_binomial.png".format(epoch, step)), tileImage(binomial_image, [64, 64]))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_real.png".format(epoch, step)), tileImage(real_image, [64, 64]))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image, [64, 64]))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_noise.png".format(epoch, step)), tileImage(noise_image, [64, 64]))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_binomial.png".format(epoch, step)), tileImage(binomial_image, [64, 64]))
 
         self.saver.save(self.sess, os.path.join(self.save_folder, "model.ckpt"), step)
 
