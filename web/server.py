@@ -20,23 +20,41 @@ def load_graph(path):
         tf.import_graph_def(graph_def, name="prefix")
     return graph
 
-def tileImage(imgs, size):
-    d = int(np.sqrt(imgs.shape[0]-1))+1
+def tileImage(imgs):
+    d = imgs.shape[0]
     h, w = imgs.shape[1], imgs.shape[2]
     if (imgs.shape[3] in (3,4,1)):
         colour = imgs.shape[3]
-        img = np.zeros((h * d, w * d, colour))
+        img = np.zeros((h, w * d, colour))
         for idx, image in enumerate(imgs):
-            i = idx // d
-            j = idx-i*d
-            img[j * h:j * h + h, i * w:i * w + w, :] = image
+            i = idx
+            img[0:h, i * w:i * w + w, :] = image
         return ((img * 255.) + 1) * 2
     else:
         raise ValueError('in merge(images,size) images parameter '
                         'must have dimensions: HxW or HxWx3 or HxWx4')
 
+def createAnimation(start_id, anim_count, frame_count, base_sprites):
+    for a in range(anim_count):
+        img_batch = []
+        cnd_batch = []
+        for f in range(frame_count):
+            cnd_vector = np.zeros(16)
+            cnd_vector[start_id + a] = 1
+            img_batch.append(base_sprites[a])
+            cnd_batch.append(np.append(cnd_vector, [f]))
+        f_count = np.zeros((len(cnd_batch), 1))
+        anim = animator.run(y_ap, feed_dict= {
+            b_ap: img_batch,
+            l_ap: cnd_batch,
+            b_asize: f_count
+        })
+        output_anim = np.concatenate(([base_sprites[a]], anim))
+        scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\animations\a" + str(a + start_id) + ".png", tileImage(output_anim))
+    return output_anim
+
 config = tf.ConfigProto()
-config.gpu_options.per_process_gpu_memory_fraction = 0.7
+config.gpu_options.per_process_gpu_memory_fraction = 0.3
 
 artist_graph = load_graph(r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models\Artist-model.pb')
 z_ip = artist_graph.get_tensor_by_name("prefix/z:0")
@@ -44,6 +62,7 @@ l_ip = artist_graph.get_tensor_by_name("prefix/label:0")
 y_op = artist_graph.get_tensor_by_name('prefix/Generator_1/sprite:0')
 b_size = artist_graph.get_tensor_by_name("prefix/batch_size:0")
 artist = tf.Session(graph=artist_graph,config=config)
+
 
 animator_graph = load_graph(r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models\Animator-model.pb')
 b_ap = animator_graph.get_tensor_by_name("prefix/base:0")
@@ -55,26 +74,16 @@ animator = tf.Session(graph=animator_graph,config=config)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
-
-@app.route('/author')
-def author():
-    return render_template('author.html')
-
-@app.route('/customizer')
-def customizer():
     json_path = os.path.join(app.root_path, "static\data", "encoding.json")
     data = json.load(open(json_path))
-    return render_template('customizer.html', encoding = data)
 
-@app.route('/training')
-def training():
-    return render_template('training.html')
+    animations = [[3, 7], [3, 8], [3, 9], [3, 6], [3, 13], [1, 6]] # Array storing the animations and their frame counts.
+    return render_template('index.html', encoding = data, animations = animations)
 
 @app.route('/_generate_sprite', methods=['POST', 'GET'])
 def generate_sprite():
     combinations = request.get_json()
-    input_ = [[1, 0, 0] + combinations, [0, 1, 0] + combinations, [0, 0, 1] + combinations]
+    input_ = [[0, 0, 1] + combinations, [1, 0, 0] + combinations, [0, 1, 0] + combinations]
     batch_size = np.zeros((len(input_), 1))
     #filler = np.repeat(np.array([combos[0]]), 60, axis = 0)
     #input_ = np.concatenate((combos, filler), axis = 0)
@@ -87,35 +96,26 @@ def generate_sprite():
     #l0[0][0] = np.random.random_sample() // 0.5
     #l0[0][1] = 1
     #l0 = np.array([np.random.binomial(1, 0.1, 72) for x in range(64)])
+    #sprites = np.concatenate((img1, img2), axis =1)
+
     sprites = artist.run(y_op, feed_dict={
         z_ip: z1,
         l_ip: input_,
         b_size: batch_size
     })
 
-    animation = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    anim_maxindex = 15
-    frames = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    frames_maxindex = 13
+    anim_one = createAnimation(0, 3, 6, sprites)
+    anim_two = createAnimation(3, 3, 7, sprites)
+    anim_three = createAnimation(6, 3, 8, sprites)
+    anim_four = createAnimation(9, 3, 5, sprites)
+    anim_five = createAnimation(12, 3, 12, sprites)
+    anim_six = createAnimation(15, 1, 5, sprites)
+
+    print("Done with sprite")
+
+    scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\sprite.png", tileImage(sprites))
 
 
-    batch_one = np.zeros((1, 1))
-
-    a = np.random.uniform(0, len(animation) - 1)
-    f = np.random.uniform(0, len(frames) - 1)
-    animation[a] = 1
-    frames[f] = 1
-
-    inp_ = animation + frames
-    anim = animator.run(y_ap, feed_dict= {
-        b_ap: [sprites[0]],
-        l_ap: inp_,
-        b_asize: batch_one
-    })
-
-    #'animations = 
-
-    scipy.misc.imsave(r"C:\Users\andrew\Documents\Root\Repos\CC\AAA\web\static\images\sprite.png", tileImage(anim, [64, 64]))
 
     return jsonify(result=time.time())
 
