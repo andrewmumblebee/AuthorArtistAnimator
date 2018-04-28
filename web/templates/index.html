@@ -7,16 +7,100 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <link rel="shortcut icon" href="{{url_for('static',filename='images/favicon.ico')}}" type="image/vnd.microsoft.icon">
     <link rel="stylesheet" href="{{url_for('static',filename='styles/style.css')}}">
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script> window.jQuery || document.write(`<script src="{{url_for('static', filename='jquery.js') }}">\x3C/script>`) </script>
+    <script type=text/javascript>
+        $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
   </head>
   <body>
+    <script type="text/javascript">
+      $(function() {
+        $('.sprite-g').bind('click', function() {
+          var btn = $(this).attr('id');
+
+
+          if (btn == 'random') {
+            $('.slider').each((index, element) => {
+              element.value = Math.random() * 100;
+            });
+          }
+
+          var sliders = $('.slider').sort(function(a ,b) {
+             return parseInt(a.id) - parseInt(b.id);
+          });
+
+          var label_values = sliders.map(function(i, val) {
+            return parseInt(val.value) / 100;
+          }).toArray();
+
+
+          $.ajax({
+            type: 'POST',
+            contentType: 'application/json',
+            url: $SCRIPT_ROOT + '/_generate_sprite',
+            dataType : 'json',
+            data : JSON.stringify(label_values),
+            success : function(data) {
+              $("#placeholder")[0].src = `{{url_for('static',filename='images/sprite.png')}}?${data.result}`;
+              $(".anim").each(function() {
+                var element = $(this);
+                var split = $(this).css('background-image').split(/\?/);
+                var new_path = `${split[0]}?${data.result}")`;
+                element.css('background-image', new_path);
+
+              });
+            },error : function(result){
+              console.log(result);
+            }
+          });
+          return false;
+        });
+        $(".option_heading").click(function (e) {
+          $(this).toggleClass('active');
+          e.stopPropagation();
+          $(this).siblings().toggle();
+        });
+      });
+    </script>
+    <div id="title">
+      <h1>Artist Animator Sprite Generation System</h1>
+    </div>
     <div id ="container">
-      <ul id="nav">
-        <li><a href="/">Home</a></li>
-        <li><a href="{{url_for('customizer')}}">Sprite Customizer</a></li>
-        <li><a href="{{url_for('author')}}">Sprite Author</a></li>
-        <li><a href="{{url_for('training')}}">Training</a></li>
-      </ul>
-      <img src="{{url_for('static',filename='images/work-in-progress.png')}}" alt="WIP" id="placeholder">
+      <div id="options">
+        <h2 id="options-heading">Options</h2>
+        <ul>
+          {% for key, value in encoding.items() %}
+            <li><span class="option_heading">{{key}} <img src={{url_for('static',filename='images/arrow-down.png')}} id="dropdown-icon"></span>
+                <ul>
+                  {% for index, option in value.items() %}
+                    {% if loop.index == 1 %}
+                    <li>{{option}}<input type="range" min="1" max="100" value="100" class="slider" id="{{index}}"></li>
+                    {% else %}
+                    <li>{{option}}<input type="range" min="0" max="100" value="0" class="slider" id="{{index}}"></li>
+                    {% endif %}
+                  {% endfor %}
+                </ul>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div id="sprites">
+          <div id="controls">
+            <button type="button" class="sprite-g">Generate Using Options</button>
+            <button type="button" id="random" class="sprite-g">Randomise Options</button>
+          </div>
+          <img src="{{url_for('static',filename='images/sprite.png')}}" alt="WIP" id="placeholder">
+          {% set count = namespace(a=0) %}
+          {% for animation in animations %}
+            <div class="anim-container">
+              {% for n in range(animation[0]) %}
+                <div class="anim f-{{animation[1]}}" style="background:url(/static/images/animations/a{{count.a}}.png?1)"></div>
+                {% set count.a = count.a + 1 %}
+              {% endfor %}
+            </div>
+          {% endfor %}
+      </div>
     </div>
   </body>
 </html>
