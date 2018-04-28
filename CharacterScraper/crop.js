@@ -31,6 +31,13 @@ function cropAnimation(img, startY, frameCount, animCount, spriteId, animId) {
         if (err)
           console.log(err);
 
+        img.clone().crop(0, 64, 64, 64)
+        .write(`./dump/sprites/f0_${files[i]}`);
+        img.clone().crop(0, 128, 64, 64)
+        .write(`./dump/sprites/f1_${files[i]}`);
+        img.clone().crop(0, 0, 64, 64)
+        .write(`./dump/sprites/f2_${files[i]}`);
+
         if (0.9 < Math.random()) {
           var random = Math.random();
           if (random < 1/6)
