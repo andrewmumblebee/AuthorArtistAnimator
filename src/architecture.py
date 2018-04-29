@@ -2,6 +2,18 @@ import tensorflow as tf
 from operations import *
 
 def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTraining=True):
+    """ Discriminator model, used by both the artist and animator systems.
+
+        Args:
+            - z: noise vector.
+            - y: conditioning vector.
+            - df_dim: feature map filter dimensions.
+            - c_dim: colour dimensions of img.
+            - batch_size: batch size of images being fed in.
+            - labelSize: length of conditioning vector.
+            - reuse: Toggles reusing variables in same scope.
+            - isTraining: Whether to update batch_norm statistics as data is fed in.
+    """
     with tf.variable_scope("Discriminator") as scope:
         if reuse: scope.reuse_variables()
 
@@ -46,7 +58,19 @@ def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTra
     return h4
 
 def artist_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=False, isTraining=True):
+    """ Creates the artist generator model.
 
+        Args:
+            - z: noise vector.
+            - y: conditioning vector.
+            - i_dim: image dimensions.
+            - gf_dim: feature map filter dimensions.
+            - c_dim: colour dimensions of img.
+            - b_size: batch size of images being fed in.
+            - labelSize: length of conditioning vector.
+            - reuse: Toggles reusing variables in same scope.
+            - isTraining: Whether to update batch_norm statistics as data is fed in.
+    """
     with tf.variable_scope("Generator") as scope:
         if reuse: scope.reuse_variables()
 
@@ -84,7 +108,20 @@ def artist_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=False,
 
     return y
 
-def animation_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=False, isTraining=True):
+def animator_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=False, isTraining=True):
+    """ Creates the animator generator model.
+
+        Args:
+            - z: noise vector.
+            - y: conditioning vector.
+            - i_dim: image dimensions.
+            - gf_dim: feature map filter dimensions.
+            - c_dim: colour dimensions of img.
+            - b_size: batch size of images being fed in.
+            - labelSize: length of conditioning vector.
+            - reuse: Toggles reusing variables in same scope.
+            - isTraining: Whether to update batch_norm statistics as data is fed in.
+    """
     with tf.variable_scope("Generator") as scope:
         if reuse: scope.reuse_variables()
 
@@ -133,21 +170,18 @@ def animation_generator(z, y, i_dim, gf_dim, c_dim, b_size, labelSize, reuse=Fal
         h1 = deconv2d(e6, [batch_size, s64, s64, gf_dim * 8], name='g_h1')
         h1 = batch_norm(h1, is_training=isTraining, scope="gNorm7")
         h1 = tf.nn.relu(h1)
-        #h1 = tf.nn.dropout(h1, 0.5)
         h1 = tf.concat([h1, e5], axis=3, name="concat_h1")
         h1 = conv_cond_concat(h1, yb)
 
         h2 = deconv2d(h1, [batch_size, s32, s32, gf_dim * 8], name='g_h2')
         h2 = batch_norm(h2, is_training=isTraining, scope="gNorm8")
         h2 = tf.nn.relu(h2)
-        #h2 = tf.nn.dropout(h2, 0.5)
         h2 = tf.concat([h2, e4], axis=3, name="concat_h2")
         h2 = conv_cond_concat(h2, yb)
 
         h3 = deconv2d(h2, [batch_size, s16, s16, gf_dim * 8], name='g_h3')
         h3 = batch_norm(h3, is_training=isTraining, scope="gNorm9")
         h3 = tf.nn.relu(h3)
-        #h3 = tf.nn.dropout(h3, 0.5)
         h3 = tf.concat([h3, e3], axis=3, name="concat_h3")
         h3 = conv_cond_concat(h3, yb)
 

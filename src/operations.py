@@ -1,3 +1,4 @@
+# OPERATIONS MODULE - Containing useful operations that the models depend on.
 import tensorflow as tf
 
 def batch_norm(x, is_training=True, scope="batch_norm", epsilon=1e-5, decay=0.9):
@@ -7,8 +8,8 @@ def batch_norm(x, is_training=True, scope="batch_norm", epsilon=1e-5, decay=0.9)
             x: Shape to have batch normalization applied to.
             is_training: Whether the graph is training, and statistics should be udpated.
             scope: Name of the scope in which the batch_normalization lies.
-            epsilon:
-            decay:
+            epsilon: Small float added to variance to avoid diving by zero.
+            decay: Decay for moving average.
     """
     return tf.contrib.layers.batch_norm(x,
                       decay=decay,
@@ -91,15 +92,18 @@ def conv2d(input_, output_dim, filt=[5, 5], strides=[2, 2],
     return conv
 
 def fc(input_, output_size, scope=None, stddev=0.02,
-       bias_start=0.0, with_w=False, name='fc'):
+       bias_start=0.0, name='fc'):
     """ Creates a fully connected layer from the input shape to the given output size.
 
-        - i
-
+        Args:
+            - input_: Input shape of the fully connected layer.
+            - output_size: Dimensions of the created fully connected layer.
+            - scope: Name of the scope in which the fully connected layer lies.
+            - stddev: stddev of random normal initializer.
+            - bias_start: initial value for biases.
+            - name: unique name to give node on graph.
     """
     # Linear Fully connected layer
-    print(name)
-    print(input_.get_shape())
     with tf.variable_scope(scope or "FullyConnected"):
         w = tf.get_variable('w', [input_.get_shape()[1], output_size], tf.float32,
                     tf.random_normal_initializer(stddev=stddev))
@@ -108,16 +112,16 @@ def fc(input_, output_size, scope=None, stddev=0.02,
 
         return tf.matmul(input_, w) + b
 
-def freeze_graph(output_node_names, model_name):
-    """Extract the sub graph defined by the output nodes and convert
-       all its variables into constant, so the graph can be reused.
+def freeze_graph(output_node_names, model_name, model_dir):
+    """ Extract the sub graph defined by the output nodes and convert
+        all its variables into constant, so the graph can be reused.
 
         Args:
-            model_dir: the root folder containing the checkpoint state file
             output_node_names: a string, containing all the output node's names,
                                 comma separated
+            model_name: unique name to give the model file.
+            model_dir: the root folder containing the checkpoint state file
     """
-    model_dir = r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models' # TODO: use relative path
     if not tf.gfile.Exists(model_dir):
         raise AssertionError(
             "Export directory doesn't exists. Please specify an export "
@@ -127,35 +131,27 @@ def freeze_graph(output_node_names, model_name):
         print("You need to supply the name of a node to --output_node_names.")
         return -1
 
-    # We retrieve our checkpoint fullpath
+    # Retrieves latest checkpoint of the model.
     checkpoint = tf.train.latest_checkpoint(model_dir)
-
-    # We precise the file fullname of our freezed graph
     absolute_model_dir = "\\".join(checkpoint.split('\\')[:-1])
     output_graph = absolute_model_dir + "\\" + model_name + "-model.pb"
 
-    # We clear devices to allow TensorFlow to control on which device it will load operations
+    # Clear devices to allow TensorFlow to control on which device it will load operations
     clear_devices = True
 
-    # We start a session using a temporary fresh Graph
     with tf.Session(graph=tf.Graph()) as sess:
-        # We import the meta graph in the current default Graph
         saver = tf.train.import_meta_graph(checkpoint + '.meta', clear_devices=clear_devices)
-
-        # We restore the weights
         saver.restore(sess, checkpoint)
 
-        # get graph definition
         gd = sess.graph.as_graph_def()
 
-        # We use a built-in TF helper to export variables to constants
         output_graph_def = tf.graph_util.convert_variables_to_constants(
-            sess, # The session is used to retrieve the weights
-            gd, # The graph_def is used to retrieve the nodes
-            output_node_names.split(",") # The output node names are used to select the usefull nodes
+            sess, # Retrieves the weights
+            gd, # Retrieves the nodes
+            output_node_names.split(",") # Output node names selects useful nodes
         )
 
-        # Finally we serialize and dump the output graph to the filesystem
+        # Serialize and dump the output graph to the filesystem
         with tf.gfile.GFile(output_graph, "wb") as f:
             f.write(output_graph_def.SerializeToString())
 

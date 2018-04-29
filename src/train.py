@@ -1,3 +1,4 @@
+""" Training module, use this to train the models on a given dataset. """
 import argparse
 from utility import BatchGenerator, AnimatorBatchGenerator
 from model import Artist, Animator
@@ -26,6 +27,7 @@ if __name__=="__main__":
     config.gpu_options.per_process_gpu_memory_fraction = 0.7
 
     with tf.Session(config=config) as sess:
+        """ Start training of a given network. """
         if FLAGS.model == "animator":
             print("\nTraining Animator Network")
             batch = AnimatorBatchGenerator(FLAGS.dataset_folder + r'\animations')

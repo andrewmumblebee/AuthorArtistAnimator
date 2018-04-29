@@ -65,9 +65,10 @@ class BatchGenerator:
         return x, l
 
     def get_labels(self, paths):
-        """
+        """ Retrieve the labels encoded in the filename of the images.
 
-
+            Args:
+                - paths[list]: paths of the images to retrieve the labels from.
         """
         labels = []
         for path in paths:
@@ -82,21 +83,33 @@ class BatchGenerator:
         return labels
 
     def get_encoding(self, paths):
-        
+        """ Apply hot encoding to labels before retrieving them.
+
+            Args:
+                - paths[list]: list of paths to retrieve labels for.
+        """
         labels = self.get_labels(paths)
         encodings = self.encoder.transform(labels).toarray()
         return encodings
 
     def get_file_count(self):
+        """ Retrieve amount of files in dataset. """
         return self.path.shape[0]
 
     def get_label_size(self):
+        """ Retrieve size of encoded labels. """
         return sum(self.encoder.n_values_)
 
     def reset_buffer(self):
+        """ Resets retrieval buffer, allowing a new epoch to retrieve the entire dataset again. """
         self.buffer = np.arange(self.path.shape[0])
 
     def generate_encoder(self, paths):
+        """ Generates an encoder based on all labels in a dataset.
+
+            Args:
+                - paths[list]: files to retrieve labels and process encodings of.
+        """
         labels = self.get_labels(paths)
         enc = OneHotEncoder()
         #labels = np.array(labels, dtype=np.float32)
@@ -105,13 +118,16 @@ class BatchGenerator:
         return enc
 
     def find_images(self, path):
+        """ Finds all the images within a given dataset folder, generating an encoder.
+
+            Args:
+                - paths[list]: files to retrieve labels and process encodings of.
+        """
         paths = []
         for file in os.listdir(path):
             if not path.endswith('b.png'):
                 paths.append(file)
         encoder = self.generate_encoder(paths)
-        # labels = labels / max_label_values
-        # labels = (labels * 2) - 1 # Normalizing labels to -1 - 1 range. This assumes a minimum of 0 in original data.
         return np.array(paths), encoder
 
 
@@ -160,6 +176,8 @@ class AnimatorBatchGenerator(BatchGenerator):
     def generate_encoder(self, paths):
         """ Generates an encoder based on all labels in a dataset.
 
+            Args:
+                - paths[list]: files to retrieve labels and process encodings of.
         """
         animations, _, bases = self.get_labels(paths)
         enc = OneHotEncoder()
@@ -167,20 +185,29 @@ class AnimatorBatchGenerator(BatchGenerator):
         return enc, bases
 
     def get_label_size(self):
+        """ Returns the overall length of the encoded labels. Plus 1 for frames. """
         return sum(self.encoder.n_values_) + 1
 
     def find_images(self, path):
+        """ Finds all the images within a given dataset folder, generating an encoder.
+
+            Args:
+                - paths[list]: files to retrieve labels and process encodings of.
+        """
         paths = []
         for file in os.listdir(path):
             if not file.endswith('b.png'):
                 paths.append(file)
         paths = np.array(paths)
         encoder, bases = self.generate_encoder(paths)
-        # labels = labels / max_label_values
-        # labels = (labels * 2) - 1 # Normalizing labels to -1 - 1 range. This assumes a minimum of 0 in original data.
         return paths, encoder, bases
 
     def get_labels(self, paths):
+        """ Retrieve the labels encoded in the filename of the images.
+
+            Args:
+                - paths[list]: paths of the images to retrieve the labels from.
+        """
         frames = []
         animations = []
         bases = []
