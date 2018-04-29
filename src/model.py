@@ -9,6 +9,10 @@ from operations import *
 from architecture import discriminator, artist_generator, animation_generator
 
 class GAN(object):
+    """ Base class of GAN.
+
+        Sets attributes that are shared across both GAN models.
+    """
     def __init__(self, sess, isTraining, imageSize, labelSize, args):
         self.bs = args.batch_size
         self.learning_rate = args.learning_rate
@@ -49,7 +53,7 @@ class Animator(GAN):
         self.d_real = discriminator(self.z, self.l, self.df_dim, self.cdim, self.batch_size, self.labelSize, isTraining=self.isTraining)
         self.d_fake = discriminator(self.z, self.l, self.df_dim, self.cdim, self.batch_size, self.labelSize, reuse=True, isTraining=self.isTraining)
 
-        # define loss
+        # Define loss
         self.d_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_real, labels=tf.ones_like (self.d_real)))
         self.d_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_fake, labels=tf.zeros_like(self.d_fake)))
         self.g_loss      = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.d_fake, labels=tf.ones_like (self.d_fake))) \
@@ -103,7 +107,7 @@ class Animator(GAN):
                 if step % 100 == 0:
                     # Run models outputting images as training is run.
                     self.writer.add_summary(summary, step)
-                    scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_bases.png".format(epoch, step)), tileImage(batch_bases, [64, 64]))
+                    scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_bases.png".format(epoch, step)), tileImage(batch_bases))
                     self.generate_sample(g_real, batch_z, batch_labels, epoch, step, batch_bases)
 
             batch_generator.reset_buffer()
@@ -120,10 +124,10 @@ class Animator(GAN):
         noise_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:l0, self.batch_size: self.batch_s})
         matched_image = self.sess.run(self.g_sample, feed_dict={self.z:bases, self.l:batch_labels, self.batch_size: self.batch_s})
 
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_real.png".format(epoch, step)), tileImage(real_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_noise.png".format(epoch, step)), tileImage(noise_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_binomial.png".format(epoch, step)), tileImage(binomial_image, [64, 64]))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_real.png".format(epoch, step)), tileImage(real_image))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_noise.png".format(epoch, step)), tileImage(noise_image))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","anim_img_{}_{}_binomial.png".format(epoch, step)), tileImage(binomial_image))
 
         self.saver.save(self.sess, os.path.join(self.save_folder, "model.ckpt"), step)
 
@@ -200,13 +204,17 @@ class Artist(GAN):
 
                 batch_z = np.random.uniform(-1., +1., [self.bs, self.zdim])
                 batch_images, batch_labels = batch_generator.get_batch(self.bs)
+
+                # Add some random noise to the labels every 5 steps, to train GAN to generalize.
                 if step % 5 == 0:
                     batch_labels = batch_labels * np.random.uniform(0, 1, [self.bs, self.labelSize])
 
                 feed_dict = {self.z : batch_z, self.l : batch_labels, self.g_real : batch_images, self.batch_size : self.batch_s}
+
+                # Every now and again train discriminator model more.
                 if step % 5 == 1:
                     _, d_loss, g_real, summary = self.sess.run([self.d_optimizer, self.d_loss, self.g_real, self.summary], feed_dict = feed_dict)
-                else:  
+                else:
                     # Update generator
                     _, g_loss              = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels, self.batch_size : self.batch_s})
                     _, g_loss                = self.sess.run([self.g_optimizer, self.g_loss],feed_dict={self.z: batch_z, self.l: batch_labels, self.batch_size : self.batch_s})
@@ -230,23 +238,16 @@ class Artist(GAN):
         # Run models outputting images as training is run.
 
         l0 = np.random.uniform(-1, +1, [self.bs, self.labelSize])
-        #l1 = np.random.uniform(-1, +1, [self.batch_size, self.labelSize])
         l1 = np.array([np.random.binomial(1, 0.5, self.labelSize) for x in range(self.bs)])
-        #l1 = np.array([[x % 2, x % 7, x % 12, x % 20, x % 20, x % 20, x % 30] for x in range(self.batch_size)])
-        #l1 = np.array([[x % 2, x % 8] for x in range(self.batch_size)])
-        #l1 = np.array([[0%2, 0%7] for x in range(self.batch_size)])
         z1 = np.random.uniform(-1, +1, [self.bs, self.zdim])
-        z2 = np.random.uniform(-1, +1, [self.zdim])
-        z2 = np.expand_dims(z2, axis=0)
-        z2 = np.repeat(z2, repeats=self.bs, axis=0)
 
         binomial_image = self.sess.run(self.g_sample, feed_dict={self.z:z1, self.l:l1, self.batch_size : self.batch_s})
-        noise_image = self.sess.run(self.g_sample, feed_dict={self.z:z2, self.l:l0, self.batch_size : self.batch_s})
+        noise_image = self.sess.run(self.g_sample, feed_dict={self.z:z1, self.l:l0, self.batch_size : self.batch_s})
         matched_image = self.sess.run(self.g_sample, feed_dict={self.z:batch_z, self.l:batch_labels, self.batch_size : self.batch_s})
 
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_real.png".format(epoch, step)), tileImage(real_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_noise.png".format(epoch, step)), tileImage(noise_image, [64, 64]))
-        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_binomial.png".format(epoch, step)), tileImage(binomial_image, [64, 64]))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_real.png".format(epoch, step)), tileImage(real_image))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_matched.png".format(epoch, step)), tileImage(matched_image))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_noise.png".format(epoch, step)), tileImage(noise_image))
+        scipy.misc.imsave(os.path.join(self.save_folder,"images","img_{}_{}_binomial.png".format(epoch, step)), tileImage(binomial_image))
 
         self.saver.save(self.sess, os.path.join(self.save_folder, "model.ckpt"), step)
