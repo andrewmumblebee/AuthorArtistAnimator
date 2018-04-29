@@ -41,17 +41,17 @@ function cropAnimation(img, startY, frameCount, animCount, spriteId, animId) {
         if (0.9 < Math.random()) {
           var random = Math.random();
           if (random < 1/6)
-            cropAnimation(img, 0, 7, 3, i, 0);
+            cropAnimation(img, 0, 6, 3, i, 0);
           if (1/6 <= random && random < 1/6 * 2)
-            cropAnimation(img, 64 * 4, 7, 3, i, 3);
+            cropAnimation(img, 64 * 4, 6, 3, i, 3);
           if (1/6 * 2 <= random && random < 1/6 * 3)
-            cropAnimation(img, 64 * 8, 8, 3, i, 6);
+            cropAnimation(img, 64 * 8, 7, 3, i, 6);
           if (1/6 * 3 <= random && random < 1/6 * 4)
-            cropAnimation(img, 64 * 12, 5, 3, i, 9);
+            cropAnimation(img, 64 * 12, 4, 3, i, 9);
           if (1/6 * 4 <= random && random < 1/6 * 5)
-            cropAnimation(img, 64 * 16, 12, 3, i, 12);
+            cropAnimation(img, 64 * 16, 11, 3, i, 12);
           if (1/6 * 5 <= random)
-            cropAnimation(img, 64 * 20, 5, 1, i, 15);
+            cropAnimation(img, 64 * 20, 4, 1, i, 15);
         }
           resolve();
       });
