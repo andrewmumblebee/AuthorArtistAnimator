@@ -1,6 +1,15 @@
 import tensorflow as tf
 
 def batch_norm(x, is_training=True, scope="batch_norm", epsilon=1e-5, decay=0.9):
+    """ Pefroms batch normalization on the input shape.
+
+        Args:
+            x: Shape to have batch normalization applied to.
+            is_training: Whether the graph is training, and statistics should be udpated.
+            scope: Name of the scope in which the batch_normalization lies.
+            epsilon:
+            decay:
+    """
     return tf.contrib.layers.batch_norm(x,
                       decay=decay,
                       updates_collections=None,
@@ -21,7 +30,7 @@ def deconv2d(input_, output_shape,
             - output_dim: Dimensions of the output shape created by the deconvolution.
             - filt: Dimensions of feature maps to be created. [5,5]
             - strides: Size of stride to take by (x,y) during deconvolution. [2, 2]
-            - stddev: might be removed.
+            - stddev: stddev of random normal initializer.
             - name: unique name to give node on graph.
     """
     with tf.variable_scope(name):
@@ -42,7 +51,12 @@ def deconv2d(input_, output_shape,
         return deconv
 
 def conv_cond_concat(x, y):
-  """Concatenate conditioning vector on feature map axis."""
+  """ Concatenate conditioning vector on feature map axis.
+
+      Args:
+        - x: feature maps.
+        - y: conditioning vector.
+  """
   x_shapes = tf.shape(x)
   y_shapes = tf.shape(y)
   y_ = y * tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])
@@ -96,11 +110,12 @@ def fc(input_, output_size, scope=None, stddev=0.02,
 
 def freeze_graph(output_node_names, model_name):
     """Extract the sub graph defined by the output nodes and convert
-    all its variables into constant
-    Args:
-        model_dir: the root folder containing the checkpoint state file
-        output_node_names: a string, containing all the output node's names,
-                            comma separated
+       all its variables into constant, so the graph can be reused.
+
+        Args:
+            model_dir: the root folder containing the checkpoint state file
+            output_node_names: a string, containing all the output node's names,
+                                comma separated
     """
     model_dir = r'C:\Users\andrew\Documents\Root\Repos\CC\AAA\src\models' # TODO: use relative path
     if not tf.gfile.Exists(model_dir):
@@ -144,8 +159,6 @@ def freeze_graph(output_node_names, model_name):
         with tf.gfile.GFile(output_graph, "wb") as f:
             f.write(output_graph_def.SerializeToString())
 
-        print("Graph saved. {}".format(output_graph))
-
-        # print("%d ops in the final graph." % len(output_graph_def.node))
+        print("Graph saved to path {}".format(output_graph))
 
     return output_graph_def
