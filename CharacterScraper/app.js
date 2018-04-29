@@ -33,11 +33,14 @@ function createJSONEncoding($, options) {
     let choices = []
     //encoding[key] = {};
     // Need to check parent, if a subheading then add as parent dict
-    value['options'].each(function(i) {
+    let i = 0;
+    value['options'].each(function() {
       let element = $(this);
       let req = [];
       if (element.attr('data-required')) {
-        req = element.attr('data-required').split(',');
+        let r = element.attr('data-required');
+        if (r != 'clothes=gown' && r != 'clothes=formal')
+          req = r.split(',');
       }
       let prohib = [];
       if (element.attr('data-prohibited')) {
@@ -49,36 +52,32 @@ function createJSONEncoding($, options) {
         data = element.attr('id').replace('-', '=');
       }
 
-      let label = value['label'] + (i + 1);
-      probabilityKeys[label] = true; // Basic way to enforce that each option appears at least once.
+        // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
+        //let parent = element.parent().parent();
+        let id = element.attr('id').split(/[-_](.+)/);
+        let k = id[0];
+        let name = id[1].replace(/_/g, ' ');
+        let label = value['label'] + (i);
 
-      choices.push([element.getUniqueSelector() , label, value['prob'], req, prohib, data]);
-      // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
-      //let parent = element.parent().parent();
-      let id = element.attr('id').split(/[-_](.+)/);
-      let k = id[0];
-      let name = id[1].replace(/_/g, ' ');
-      if (!encoding[k])
-        encoding[k] = {};
+        if (name != 'gown' && name != 'formal') {
+          if (!encoding[key])
+            encoding[key] = {};
+          probabilityKeys[label] = true; // Basic way to enforce that each option appears at least once.
 
-      encoding[k][n] = name;
+          choices.push([element.getUniqueSelector() , label, value['prob'], req, prohib, data]);
 
-      // if (parent.is("li")) {
-      //   let heading = parent.first().text();
-      //   console.log(element.attr('id'));
-      //   encoding[key][heading] = {};
-      //   encoding[key][heading][n] = element.next().text();
-      // } else {
-      //   encoding[key][n] = element.next().text();
-      // }
-      n++;
+          encoding[key][n] = name;
+
+          i++;
+          n++;
+        }
     });
     catalog.push(choices);
   }
 
-  fs.writeFileSync('../web/static/data/encoding.json', JSON.stringify(encoding), 'utf8', (err) => console.log(err));
+  fs.writeFileSync('./encoding.json', JSON.stringify(encoding), 'utf8', (err) => console.log(err));
 
-  return catalog, probabilityKeys;
+  return [catalog, probabilityKeys];
 }
 
 function shuffle (array) {
@@ -108,7 +107,7 @@ function cartesian(arg, probabilityMap) {
               let a = arr.slice(0); // clone arr
               let label = arg[i][j][4];
 
-              if (probabilityMap[label]['prob'] || arg[i][j][2] > Math.random()) {
+              if (probabilityMap[label] || arg[i][j][2] > Math.random()) {
                 a.push(arg[i][j]);
                 if (i==max)
                     r.push(a);
@@ -121,15 +120,6 @@ function cartesian(arg, probabilityMap) {
   }
   helper([], 0, []);
   return r;
-}
-
-var array = [
-  []
-]
-
-
-function handleSex(sex) {
-
 }
 
 request('http://127.0.0.1:8080/', function (error, response, html) {
@@ -145,129 +135,45 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
         'label': 's'
       },
       'body': {
-        'options': $(options[1]).find('input'),
+        'options': $(options[1]).find('input').slice(9, 10),
         'prob': 1,
         'label': 'r'
       },
       'legs': {
         'options': $(options[4]).find('input'),
-        'prob': 0.2,
+        'prob': 0.5,
         'label': 'l'
       },
       'clothes': {
         'options': $(options[5]).find('input'),
-        'prob': 0.2,
+        'prob': 0.5,
         'label': 'c'
-      },
-      'hair': {
-        'options': $(options[27]).find('input'),
-        'prob': 0.2,
-        'label': 'h'
       },
       'eyes': {
         'options': $(options[2]).find('input'),
-        'prob': 0.2,
+        'prob': 1,
         'label': 'e'
       },
       'nose': {
         'options': $(options[3]).find('input'),
-        'prob': 0.2,
+        'prob': 1,
         'label': 'n'
       },
       'ears': {
         'options': $(options[28]).find('input'),
-        'prob': 0.2,
+        'prob': 1,
         'label': 'o'
       },
     };
 
-    // var options_map = {
-    //   'sex': $(options[0]).find('input'),
-    //   'sex': {
-    //     'options': $(options[0]).find('input'),
-    //     'prob': 1,
-    //     'label': 's'
-    //   },
-    //   'race': {}
-    //   'race': $(options[1]).find('input'),
-    //   'eyes': $(options[2]).find('input'),
-    //   'nose': $(options[3]).find('input'),
-    //   'ears': $(options[4]).find('input'),
-    //   'legs': $(options[5]).find('input'),
-    //   'clothes': $(options[6]).find('input'),
-    //   // 'hair': $(options[11]).find('input'),
-    // };
+    var encoding = createJSONEncoding($, options_map);
+    var catalog = encoding[0];
+    var probabilityMap =  encoding[1];
 
-    var catalog, probabilityMap = createJSONEncoding($, options_map);
-
-
-    // var sex = $(options[0]).find('input');
-    // var race = $(options[1]).find('input');
-    // var eyes = $(options[2]).find('input');
-    // var nose = $(options[3]).find('input');
-    // var ears = $(options[4]).find('input');
-    // var legs = $(options[5]).find('input');
-    // var clothes = $(options[6]).find('input');
-    // var hair = $(options[11]).find('input');
     var permutations = cartesian(catalog, probabilityMap);
     console.log(`Capturing ${permutations.length} sprites.`);
 
-    // Optimization 1 - Only take screenshots of sprites not already captured in dataset.
-    // Optimization 2 - Store a list of the selectors and make permutations, instead of nesting.
-
-    // sex.each(function(i) {
-    //   let s = [$(this).getUniqueSelector() , i + 1];
-    //   let c;
-    //   if ($(this).next().text() == 'Male') {
-    //     c = ['sex=female'];
-    //   } else {
-    //     c = ['sex=male', 'clothes=formal'];
-    //   }
-    //   race.each(function (i) {
-    //     let r = [$(this).getUniqueSelector() , i + 1];
-    //     console.log("On race" + i);
-    //     if (!checkConstraint($(this), c)) {
-    //       eyes.each(function (i) {
-    //         if (Math.random() > 0.5) return true;
-    //         let e = [$(this).getUniqueSelector() , i + 1];
-    //         if ($(this).next().text() != 'Skeleton') {
-    //           nose.each(function (i) {
-    //             if (Math.random() > 0.5) return true;
-    //             let n = [$(this).getUniqueSelector() , i + 1];
-    //             if ($(this).next().text() != 'Skeleton') {
-    //               ears.each(function (i) {
-    //                 if (Math.random() > 0.4) return true;
-    //                 let ea = [$(this).getUniqueSelector() , i + 1];
-    //                 legs.each(function (i) {
-    //                   if (Math.random() > 0.4) return true;
-    //                   let l = [$(this).getUniqueSelector() , i + 1];
-    //                   if (!checkConstraint($(this), c)) {
-    //                     clothes.each(function (i) {
-    //                       if (Math.random() > 0.4) return true;
-    //                       let cl = [$(this).getUniqueSelector() , i + 1];
-    //                       if (!checkConstraint($(this), c)) {
-    //                         hair.each(function(i) {
-    //                           let h = [$(this).getUniqueSelector(), i + 1];
-    //                           if (Math.random() > 0.3) return true;
-    //                           if (!checkConstraint($(this), c)) {
-    //                             let options = {'selectors' : [s[0], r[0], e[0], n[0], ea[0], l[0], cl[0], h[0]], 'labels' : `s${s[1]}_r${r[1]}_e${e[1]}_n${n[1]}_ea${ea[1]}_l${l[1]}_cl${cl[1]}_h${h[1]}` };
-    //                             combinations.push(options);
-    //                           }
-    //                         });
-    //                       }
-    //                     });
-    //                   }
-    //                 });
-    //               });
-    //             }
-    //           });
-    //         }
-    //       });
-    //     }
-    //   });
-    // });
     permutations = shuffle(permutations);
-
     const arrayColumn = (arr, n) => arr.map(x => x[n]);
 
     (async (permutations) => {
@@ -278,11 +184,16 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
 
       // This has to be made synchronous, otherwise screenshot might be taken on wrong combination.
       await asyncForEach(permutations, async function(combination) {
+        await page.goto('http://127.0.0.1:8080/');
         // Don't take a screenshot if it already exists.
-        let output_path = `./dump/sheets/${arrayColumn(combination, 1).join('_')}.png`;
+        const pngImage = await page.$('#spritesheet');
+        let ids = arrayColumn(combination, 1);
+        await page.evaluate((preclick) => {
+          document.querySelector(preclick).click();
+        }, ids[0] == 's1' ? '#clothes-gown': '#clothes-formal');
+
+        let output_path = `./dump/sheets/${ids.join('_')}.png`;
         if (!fs.existsSync(output_path)) {
-          await page.goto('http://127.0.0.1:8080/');
-          const pngImage = await page.$('#spritesheet');
           await asyncForEach(arrayColumn(combination, 0), async function(selector) {
             await page.waitForSelector(selector);
             await page.evaluate((selector) => {
