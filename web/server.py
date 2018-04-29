@@ -74,21 +74,21 @@ def createAnimation(start_id, anim_count, frame_count, base_sprites):
             b_asize: f_count
         })
         output_anim = np.concatenate(([base_sprites[a]], anim)) # Add base image to the output animation file.
-        scipy.misc.imsave(app.root_path + r"\static\images\animations\a" + str(a + start_id) + ".png", joinImages(output_anim))
+        scipy.misc.imsave(app.root_path + "/static/images/animations/a" + str(a + start_id) + ".png", joinImages(output_anim))
 
     return output_anim
 
 config = tf.ConfigProto()
 config.gpu_options.per_process_gpu_memory_fraction = 0.3
 
-artist_graph = load_graph(app.root_path + r'\..\src\models\Artist-model.pb')
+artist_graph = load_graph(app.root_path + "/../src/models/Artist-model.pb")
 z_ip = artist_graph.get_tensor_by_name("model/z:0")
 l_ip = artist_graph.get_tensor_by_name("model/label:0")
-y_op = artist_graph.get_tensor_by_name('model/Generator_1/sprite:0')
+y_op = artist_graph.get_tensor_by_name("model/Generator_1/sprite:0")
 b_size = artist_graph.get_tensor_by_name("model/batch_size:0")
 artist = tf.Session(graph=artist_graph,config=config)
 
-animator_graph = load_graph(app.root_path + r'\..\src\models\Animator-model.pb')
+animator_graph = load_graph(app.root_path + "/../src/models/Animator-model.pb")
 b_ap = animator_graph.get_tensor_by_name("model/base:0")
 l_ap = animator_graph.get_tensor_by_name("model/label:0")
 y_ap = animator_graph.get_tensor_by_name("model/Generator_1/sprite:0")
@@ -99,7 +99,7 @@ animator = tf.Session(graph=animator_graph,config=config)
 @app.route('/')
 def index():
     """ Loads encodings and passes to index to fill out sliders and animation img placeholders. """
-    json_path = os.path.join(app.root_path, "static\data", "encoding.json")
+    json_path = os.path.join(app.root_path, "static/data", "encoding.json")
     data = json.load(open(json_path))
 
     # This is fairly odd way to do it, but it's in the form of [animCount, frameCount]
@@ -133,7 +133,7 @@ def generate_sprite():
 
     print("[Info] Sprites created successfully.")
 
-    scipy.misc.imsave(app.root_path + r"\static\images\sprite.png", joinImages(sprites))
+    scipy.misc.imsave(app.root_path + "/static/images/sprite.png", joinImages(sprites))
 
     return jsonify(result=time.time())
 
