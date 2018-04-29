@@ -20,8 +20,7 @@
         $('.sprite-g').bind('click', function() {
           var btn = $(this).attr('id');
 
-
-          if (btn == 'random') {
+          if (btn == 'random') { // Randomise options.
             $('.slider').each(function (index, element) {
               element.value = Math.random() * 100;
             });
@@ -35,7 +34,7 @@
             return parseInt(val.value) / 100;
           }).toArray();
 
-
+          // Sends slider settings to the backend sprite generation method.
           $.ajax({
             type: 'POST',
             contentType: 'application/json',
@@ -49,9 +48,7 @@
                 var element = $(this);
                 var split = $(this).css('background-image').split(/\?/);
                 var new_path = split[0] + '?' + data.result + '")';
-                console.log(new_path);
                 element.css('background-image', new_path);
-                console.log(element.css('background-image'));
               });
             },error : function(result){
               console.log(result);
@@ -59,10 +56,22 @@
           });
           return false;
         });
+
         $(".option_heading").click(function (e) {
           $(this).toggleClass('active');
           e.stopPropagation();
           $(this).siblings().toggle();
+        });
+
+        var default_options = $('.slider').map(function(index, element) {
+          return element.value;
+        });
+
+        $("#reset").click(function (e) {
+          // Resets slider values back to their default settings.
+          $('.slider').each(function (index, element) {
+            element.value = default_options[index];
+          });
         });
       });
     </script>
@@ -90,6 +99,7 @@
       </div>
       <div id="sprites">
           <div id="controls">
+            <button type="button" id="reset">Reset Options</button>
             <button type="button" class="sprite-g">Generate Using Options</button>
             <button type="button" id="random" class="sprite-g">Randomise Options</button>
           </div>
