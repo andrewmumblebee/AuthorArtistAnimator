@@ -8,7 +8,7 @@
     <link rel="shortcut icon" href="{{url_for('static',filename='images/favicon.ico')}}" type="image/vnd.microsoft.icon">
     <link rel="stylesheet" href="{{url_for('static',filename='styles/style.css')}}">
     <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-    <script> window.jQuery || document.write(`<script src="{{url_for('static', filename='jquery.js') }}">\x3C/script>`) </script>
+    <script> window.jQuery </script>
     <script type=text/javascript>
         $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
     </script>
@@ -22,7 +22,7 @@
 
 
           if (btn == 'random') {
-            $('.slider').each((index, element) => {
+            $('.slider').each(function (index, element) {
               element.value = Math.random() * 100;
             });
           }
@@ -44,12 +44,14 @@
             data : JSON.stringify(label_values),
             success : function(data) {
               // Performs cache busting to update page without requiring a refresh (Bad practice.)
-              $("#placeholder")[0].src = `{{url_for('static',filename='images/sprite.png')}}?${data.result}`;
+              $("#placeholder")[0].src = "{{url_for('static',filename='images/sprite.png')}}?" + data.result;
               $(".anim").each(function() {
                 var element = $(this);
                 var split = $(this).css('background-image').split(/\?/);
-                var new_path = `${split[0]}?${data.result}")`;
+                var new_path = split[0] + '?' + data.result + '")';
+                console.log(new_path);
                 element.css('background-image', new_path);
+                console.log(element.css('background-image'));
               });
             },error : function(result){
               console.log(result);
