@@ -15,6 +15,7 @@
   </head>
   <body>
     <script type="text/javascript">
+      // This handles any button clicks, retrieving slider values to be sent to server side.
       $(function() {
         $('.sprite-g').bind('click', function() {
           var btn = $(this).attr('id');
@@ -42,13 +43,13 @@
             dataType : 'json',
             data : JSON.stringify(label_values),
             success : function(data) {
+              // Performs cache busting to update page without requiring a refresh (Bad practice.)
               $("#placeholder")[0].src = `{{url_for('static',filename='images/sprite.png')}}?${data.result}`;
               $(".anim").each(function() {
                 var element = $(this);
                 var split = $(this).css('background-image').split(/\?/);
                 var new_path = `${split[0]}?${data.result}")`;
                 element.css('background-image', new_path);
-
               });
             },error : function(result){
               console.log(result);
