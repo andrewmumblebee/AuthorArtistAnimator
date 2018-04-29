@@ -122,7 +122,7 @@ function cartesian(arg, probabilityMap) {
   return r;
 }
 
-request('http://127.0.0.1:8080/', function (error, response, html) {
+request('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator/', function (error, response, html) {
   if (!error && response.statusCode == 200) {
 
     var $ = cheerio.load(html.toString());
@@ -184,7 +184,7 @@ request('http://127.0.0.1:8080/', function (error, response, html) {
 
       // This has to be made synchronous, otherwise screenshot might be taken on wrong combination.
       await asyncForEach(permutations, async function(combination) {
-        await page.goto('http://127.0.0.1:8080/');
+        await page.goto('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator/');
         // Don't take a screenshot if it already exists.
         const pngImage = await page.$('#spritesheet');
         let ids = arrayColumn(combination, 1);
