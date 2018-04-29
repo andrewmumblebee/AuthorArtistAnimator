@@ -22,11 +22,6 @@ li {
     list-style-type: none;
 }
 
-/* Change the link color to #111 (black) on hover */
-#nav li a:hover {
-    background-color: #111;
-}
-
 #options>ul>li>ul {
     display: none;
 }
@@ -34,7 +29,6 @@ li {
 .anim-container {
     display: flex;
 }
-
 
 .anim {
     width: 64px;
@@ -142,7 +136,6 @@ li {
 
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
-    appearance: none;
     width: 25px;
     height: 25px;
     border-radius: 50%;
