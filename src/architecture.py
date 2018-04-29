@@ -51,7 +51,6 @@ def discriminator(z, y, df_dim, c_dim, batch_size, labelSize, reuse=False, isTra
         # fc1
         r_shape = tf.shape(h3)
         f_shape = h3.get_shape()
-        #n_b, n_h, n_w, n_f = [int(x) for x in tf.shape(h3)]
         h4 = tf.reshape(h3, [r_shape[0], f_shape[1] * f_shape[2] * f_shape[3]])
         h4 = fc(h4, f_shape[1] * f_shape[2] * f_shape[3], scope='d_fc1')
 
