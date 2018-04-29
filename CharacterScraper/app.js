@@ -13,16 +13,21 @@ http.createServer(function (req, res) {
 }).listen(8080);
 
 async function asyncForEach(array, callback) {
+  /** Asynchronous for loop, that waits on the callback. */
   for (let index = 0; index < array.length; index++) {
     await callback(array[index], index, array)
   }
 }
 
 function checkConstraint(constraints, data) {
+  /** Check whether a setting contains a given constraint. */
   return constraints.some((constraint) => data.includes(constraint));
 }
 
 function createJSONEncoding($, options) {
+  /** Loops through all the options gathered from the sprite site, adding encoding data.
+   *  The encoded values are then stored within an encoding.json file, to be used by the web server.
+   */
   var encoding = {};
   var catalog = [];
   var probabilityKeys = {};
@@ -31,7 +36,7 @@ function createJSONEncoding($, options) {
 
   for (let [key, value] of Object.entries(options)) {
     let choices = []
-    //encoding[key] = {};
+
     // Need to check parent, if a subheading then add as parent dict
     let i = 0;
     value['options'].each(function() {
@@ -52,25 +57,25 @@ function createJSONEncoding($, options) {
         data = element.attr('id').replace('-', '=');
       }
 
-        // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
-        //let parent = element.parent().parent();
-        let id = element.attr('id').split(/[-_](.+)/);
-        let k = id[0];
-        let name = id[1].replace(/_/g, ' ');
-        let label = value['label'] + (i);
+      // As we use hot encoding and aritficial noise, encoding key index maps to slot of conditioning vector.
+      //let parent = element.parent().parent();
+      let id = element.attr('id').split(/[-_](.+)/);
+      let k = id[0];
+      let name = id[1].replace(/_/g, ' ');
+      let label = value['label'] + (i);
 
-        if (name != 'gown' && name != 'formal') {
-          if (!encoding[key])
-            encoding[key] = {};
-          probabilityKeys[label] = true; // Basic way to enforce that each option appears at least once.
+      if (name != 'gown' && name != 'formal') {
+        if (!encoding[key])
+          encoding[key] = {};
+        probabilityKeys[label] = true; // Basic way to enforce that each option appears at least once.
 
-          choices.push([element.getUniqueSelector() , label, value['prob'], req, prohib, data]);
+        choices.push([element.getUniqueSelector() , label, value['prob'], req, prohib, data]);
 
-          encoding[key][n] = name;
+        encoding[key][n] = name;
 
-          i++;
-          n++;
-        }
+        i++;
+        n++;
+      }
     });
     catalog.push(choices);
   }
@@ -81,6 +86,7 @@ function createJSONEncoding($, options) {
 }
 
 function shuffle (array) {
+  /** Shuffles the given array values. */
   var i = 0
     , j = 0
     , temp = null
@@ -95,6 +101,10 @@ function shuffle (array) {
 }
 
 function cartesian(arg, probabilityMap) {
+  /** Attempts to make a cartesian set of permutations of selectors (i.e. orc with red shirt, etc.).
+   *  However, this also introduces a probability aspect to what permutations are selected.
+   *  This is to avoid crashing JavaScript with >10000 permutations.
+   */
   var r = [], max = arg.length-1;
   function helper(arr, i, data) {
       for (var j=0, l=arg[i].length; j<l; j++) {
@@ -122,12 +132,20 @@ function cartesian(arg, probabilityMap) {
   return r;
 }
 
+// Opens the sprite generator site, gathering permutations of customization options.
+// These permutations are then fed into a headless browser session, that grabs screenshots of the sprite sheets, given these customization options.
+// For example a permutation could be 'Orc, red shirt, blue pants, blue eyes.'
 request('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator/', function (error, response, html) {
   if (!error && response.statusCode == 200) {
 
     var $ = cheerio.load(html.toString());
     GetUniqueSelector.init($);
     var options = $('#chooser > ul > li');
+
+    // Creates a map of the options that will be scraped.
+    // Options - contains the elements that relate to that customization option.
+    // Prob - is the probability of selecting an option in a permutation.
+    // Label - label is the label to give the encoded file for that setting.
     var options_map = {
       'sex': {
         'options': $(options[0]).find('input'),
@@ -176,6 +194,8 @@ request('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator/'
     permutations = shuffle(permutations);
     const arrayColumn = (arr, n) => arr.map(x => x[n]);
 
+    // Opens a headless browser session, and toggles options in the permutations set on the sprite generator site.
+    // This will take screenshots after toggling each set of permutations, and store them in the folder dump/sheets.
     (async (permutations) => {
       const browser = await puppeteer.launch({headless: true});
       const page = await browser.newPage();
@@ -188,6 +208,7 @@ request('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator/'
         // Don't take a screenshot if it already exists.
         const pngImage = await page.$('#spritesheet');
         let ids = arrayColumn(combination, 1);
+
         await page.evaluate((preclick) => {
           document.querySelector(preclick).click();
         }, ids[0] == 's1' ? '#clothes-gown': '#clothes-formal');
@@ -201,7 +222,6 @@ request('http://gaurav.munjal.us/Universal-LPC-Spritesheet-Character-Generator/'
             }, selector);
           });
           await page.waitFor(50);
-          //let valid = await page.evaluate(() => document.querySelector('#valid-selection').textContent);
           await pngImage.screenshot({
             path: output_path,
             omitBackground: true,
