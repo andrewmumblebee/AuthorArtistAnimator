@@ -13,7 +13,7 @@
     "cheerio": "^1.0.0-rc.2",
     "cheerio-get-css-selector": "^2.0.0",
     "jimp": "^0.2.28",
-    "puppeteer": "^1.1.1",
+    "puppeteer": "^1.13.0",
     "request": "^2.83.0",
     "unique-selector": "^0.3.6"
   },
